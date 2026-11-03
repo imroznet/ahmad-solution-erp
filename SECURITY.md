@@ -7,6 +7,7 @@ Report a vulnerability privately to the system owner at Ahmad Solution Ltd. Do n
 - Session cookies are HTTP-only, SameSite=Lax, encrypted, and marked Secure when `APP_URL` uses HTTPS.
 - Login is limited to five attempts per email and IP address.
 - Passwords are hashed by Laravel. The minimum is 12 characters with upper case, lower case, and a number.
+- A password reset, and an administrator setting a new password, replaces the remember token and deletes that account's database sessions.
 - There is no public registration.
 - Inactive accounts cannot sign in, and an existing session is ended on the next request.
 - Authorization is permission based. The super administrator role cannot be reduced.

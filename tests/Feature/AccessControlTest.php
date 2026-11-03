@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\SuperAdministratorGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -127,6 +128,57 @@ class AccessControlTest extends TestCase
         $this->actingAs($super)->put(route('roles.update', $superRole), [
             'permissions' => [],
         ])->assertForbidden();
+    }
+
+    public function test_setting_a_password_revokes_that_users_sessions_only(): void
+    {
+        $admin = $this->userWithRole('administrator');
+        $user = $this->userWithRole('viewer', ['email' => 'staff@example.com']);
+        $previousToken = $user->remember_token;
+        $viewerRole = $user->roles()->firstOrFail();
+
+        DB::table('sessions')->insert([
+            [
+                'id' => 'staff-session',
+                'user_id' => $user->id,
+                'ip_address' => '127.0.0.1',
+                'user_agent' => 'test',
+                'payload' => 'staff',
+                'last_activity' => time(),
+            ],
+            [
+                'id' => 'admin-session',
+                'user_id' => $admin->id,
+                'ip_address' => '127.0.0.1',
+                'user_agent' => 'test',
+                'payload' => 'admin',
+                'last_activity' => time(),
+            ],
+        ]);
+
+        $this->actingAs($admin)->put(route('users.update', $user), [
+            'name' => 'Staff Person',
+            'email' => $user->email,
+            'roles' => [$viewerRole->id],
+            'is_active' => '1',
+        ])->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseHas('sessions', ['id' => 'staff-session']);
+        $this->assertSame($previousToken, $user->fresh()->remember_token);
+
+        $this->actingAs($admin)->put(route('users.update', $user), [
+            'name' => 'Staff Person',
+            'email' => $user->email,
+            'password' => 'New-Password-22',
+            'password_confirmation' => 'New-Password-22',
+            'roles' => [$viewerRole->id],
+            'is_active' => '1',
+        ])->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseMissing('sessions', ['id' => 'staff-session']);
+        $this->assertDatabaseHas('sessions', ['id' => 'admin-session']);
+        $this->assertNotSame($previousToken, $user->fresh()->remember_token);
+        $this->assertStringNotContainsString('New-Password-22', AuditLog::query()->get()->toJson());
     }
 
     public function test_administrator_can_view_roles_but_cannot_change_them(): void

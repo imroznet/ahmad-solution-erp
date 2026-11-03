@@ -7,9 +7,12 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SessionRevoker;
 use App\Services\SuperAdministratorGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -85,7 +88,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(UpdateUserRequest $request, User $user, AuditLogger $audit): RedirectResponse
+    public function update(UpdateUserRequest $request, User $user, AuditLogger $audit, SessionRevoker $sessions): RedirectResponse
     {
         $actor = $this->actor($request);
 
@@ -121,23 +124,32 @@ class UserController extends Controller
             'is_active' => $willBeActive,
         ]);
 
-        if ($request->filled('password')) {
+        $passwordChanged = $request->filled('password');
+
+        if ($passwordChanged) {
             $user->password = $request->validated('password');
+            $user->remember_token = Str::random(60);
         }
 
-        $user->save();
+        DB::transaction(function () use ($user, $editingSelf, $roleIds, $passwordChanged, $sessions, $audit, $actor, $original): void {
+            $user->save();
 
-        if (! $editingSelf) {
-            $user->roles()->sync($roleIds);
-        }
+            if (! $editingSelf) {
+                $user->roles()->sync($roleIds);
+            }
 
-        $audit->record('user_updated', $user, oldValues: $original, newValues: [
-            'name' => $user->name,
-            'email' => $user->email,
-            'is_active' => $user->is_active,
-            'roles' => $user->roles()->orderBy('slug')->pluck('slug')->all(),
-            'password' => $request->filled('password') ? '[redacted]' : null,
-        ], actor: $actor);
+            if ($passwordChanged) {
+                $sessions->revoke($user);
+            }
+
+            $audit->record('user_updated', $user, oldValues: $original, newValues: [
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_active' => $user->is_active,
+                'roles' => $user->roles()->orderBy('slug')->pluck('slug')->all(),
+                'password' => $passwordChanged ? '[redacted]' : null,
+            ], actor: $actor);
+        });
 
         return redirect()->route('users.index')->with('status', 'User updated.');
     }

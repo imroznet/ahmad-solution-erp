@@ -26,10 +26,10 @@ final class AccessSqlExporter
             $permissionRows[] = sprintf(
                 '(%d, %s, %s, %s, %s, NOW(), NOW())',
                 $permission['id'],
-                self::quote($permission['name']),
-                self::quote($permission['slug']),
-                self::quote($permission['group']),
-                self::quote($permission['description']),
+                self::sqlLiteral($permission['name']),
+                self::sqlLiteral($permission['slug']),
+                self::sqlLiteral($permission['group']),
+                self::sqlLiteral($permission['description']),
             );
         }
 
@@ -44,9 +44,9 @@ final class AccessSqlExporter
             $roleRows[] = sprintf(
                 '(%d, %s, %s, %s, 1, NOW(), NOW())',
                 $role['id'],
-                self::quote($role['name']),
-                self::quote($role['slug']),
-                self::quote($role['description']),
+                self::sqlLiteral($role['name']),
+                self::sqlLiteral($role['slug']),
+                self::sqlLiteral($role['description']),
             );
 
             foreach (PermissionCatalog::permissionIdsForRole($role['slug']) as $permissionId) {
@@ -64,8 +64,17 @@ final class AccessSqlExporter
         return implode("\n", $lines);
     }
 
-    private static function quote(string $value): string
+    /**
+     * MySQL string literal with backslash escapes enabled.
+     * A backslash is escaped before an apostrophe, so A\'B becomes 'A\\\'B'.
+     * Keep this identical to sql_literal() in deploy/generate-admin-sql.php.
+     */
+    public static function sqlLiteral(string $value): string
     {
-        return "'".str_replace("'", "''", $value)."'";
+        return "'".str_replace(
+            ['\\', "\0", "\n", "\r", "'", '"', "\x1a"],
+            ['\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'],
+            $value,
+        )."'";
     }
 }

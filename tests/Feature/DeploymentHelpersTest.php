@@ -47,6 +47,34 @@ class DeploymentHelpersTest extends TestCase
         $this->assertStringNotContainsString('INSERT INTO', $failure->getOutput());
     }
 
+    public function test_admin_sql_escapes_a_backslash_before_an_apostrophe(): void
+    {
+        $success = $this->generator([
+            'ADMIN_NAME' => "A\\'B",
+            'ADMIN_EMAIL' => 'admin@example.com',
+            'ADMIN_PASSWORD' => 'Correct-Horse-1',
+        ]);
+
+        $this->assertSame(0, $success->getExitCode(), $success->getErrorOutput());
+
+        $output = $success->getOutput();
+        $safe = "'A\\\\\\'B'";
+        $unsafe = "'A\\'''";
+
+        $this->assertStringContainsString($safe, $output);
+        $this->assertStringNotContainsString($unsafe, $output);
+        $this->assertStringContainsString('NO_BACKSLASH_ESCAPES', $output);
+        $this->assertSame($safe, AccessSqlExporter::sqlLiteral("A\\'B"));
+    }
+
+    public function test_reference_sql_matches_the_committed_file(): void
+    {
+        $committed = file_get_contents(base_path('deploy/reference-data.sql'));
+
+        $this->assertIsString($committed);
+        $this->assertSame($committed, AccessSqlExporter::toSql());
+    }
+
     public function test_create_admin_command_uses_the_environment_without_echoing_the_password(): void
     {
         putenv('ADMIN_NAME=Amina Rahman');

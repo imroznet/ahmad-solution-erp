@@ -48,14 +48,17 @@ if ($hash === false) {
     exit(1);
 }
 
-$quotedName = "'".str_replace("'", "''", $name)."'";
-$quotedEmail = "'".str_replace("'", "''", $email)."'";
-$quotedHash = "'".str_replace("'", "''", $hash)."'";
+$quotedName = sql_literal($name);
+$quotedEmail = sql_literal($email);
+$quotedHash = sql_literal($hash);
 
 echo <<<SQL
 -- Ahmad Solution Ltd. ERP first administrator.
 -- Import after deploy/mysql-schema.sql and deploy/reference-data.sql.
 -- Do not commit this output. It contains a password hash.
+-- Apostrophes are written as \\'. The next statement keeps backslash escapes on for this session.
+
+SET SESSION sql_mode = TRIM(BOTH ',' FROM REPLACE(CONCAT(',', @@SESSION.sql_mode, ','), ',NO_BACKSLASH_ESCAPES,', ','));
 
 INSERT INTO `users` (`name`, `email`, `email_verified_at`, `password`, `is_active`, `created_at`, `updated_at`)
 VALUES ({$quotedName}, {$quotedEmail}, NOW(), {$quotedHash}, 1, NOW(), NOW());
@@ -64,3 +67,17 @@ INSERT INTO `role_user` (`user_id`, `role_id`)
 SELECT LAST_INSERT_ID(), `id` FROM `roles` WHERE `slug` = 'super-administrator';
 
 SQL;
+
+/**
+ * MySQL string literal with backslash escapes enabled.
+ * A backslash is escaped before an apostrophe, so A\'B becomes 'A\\\'B'.
+ * Keep this identical to App\Authorization\AccessSqlExporter::sqlLiteral().
+ */
+function sql_literal(string $value): string
+{
+    return "'".str_replace(
+        ['\\', "\0", "\n", "\r", "'", '"', "\x1a"],
+        ['\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'],
+        $value,
+    )."'";
+}

@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -114,12 +115,19 @@ class AuthenticationTest extends TestCase
             return true;
         });
 
+        $other = $this->userWithRole('viewer', ['email' => 'other@example.com']);
+        $this->insertSession('stolen-session', $user->id);
+        $this->insertSession('other-session', $other->id);
+
         $this->post('/reset-password', [
             'token' => $token,
             'email' => $user->email,
             'password' => 'New-Password-22',
             'password_confirmation' => 'New-Password-22',
         ])->assertRedirect(route('login'));
+
+        $this->assertDatabaseMissing('sessions', ['id' => 'stolen-session']);
+        $this->assertDatabaseHas('sessions', ['id' => 'other-session']);
 
         $this->post('/login', [
             'email' => $user->email,
@@ -156,5 +164,17 @@ class AuthenticationTest extends TestCase
         $this->assertFalse($log->delete());
         $this->assertSame('login', $log->fresh()->event);
         $this->assertInstanceOf(User::class, User::factory()->make());
+    }
+
+    private function insertSession(string $id, int $userId): void
+    {
+        DB::table('sessions')->insert([
+            'id' => $id,
+            'user_id' => $userId,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => $id,
+            'last_activity' => time(),
+        ]);
     }
 }

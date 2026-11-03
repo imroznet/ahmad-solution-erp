@@ -84,7 +84,7 @@ ADMIN_PASSWORD="a long password" \
 php deploy/generate-admin-sql.php
 ```
 
-Paste the printed SQL into phpMyAdmin. Do not save it in the repository. Unset `ADMIN_PASSWORD` afterwards.
+Paste the printed SQL into phpMyAdmin as one script. Do not save it in the repository. Unset `ADMIN_PASSWORD` afterwards. The script turns off `NO_BACKSLASH_ESCAPES` for that session and escapes backslashes before apostrophes, so a name such as `A\'B` cannot break out of the `INSERT`.
 
 The password needs at least 12 characters, upper case, lower case, and a number. The script prints a bcrypt hash and refuses to run if it is invoked by a web request.
 

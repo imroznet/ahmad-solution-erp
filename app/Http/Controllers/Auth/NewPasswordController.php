@@ -6,8 +6,10 @@ use App\Auth\PasswordRule;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SessionRevoker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -22,7 +24,7 @@ class NewPasswordController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditLogger $audit): RedirectResponse
+    public function store(Request $request, AuditLogger $audit, SessionRevoker $sessions): RedirectResponse
     {
         $request->merge([
             'email' => Str::lower(trim((string) $request->input('email'))),
@@ -36,13 +38,16 @@ class NewPasswordController extends Controller
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) use ($audit): void {
-                $user->forceFill([
-                    'password' => $password,
-                    'remember_token' => Str::random(60),
-                ])->save();
+            function (User $user, string $password) use ($audit, $sessions): void {
+                DB::transaction(function () use ($user, $password, $audit, $sessions): void {
+                    $user->forceFill([
+                        'password' => $password,
+                        'remember_token' => Str::random(60),
+                    ])->save();
 
-                $audit->record('password_reset', $user, actor: $user);
+                    $sessions->revoke($user);
+                    $audit->record('password_reset', $user, actor: $user);
+                });
             },
         );
 

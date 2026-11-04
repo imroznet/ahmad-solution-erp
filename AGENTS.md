@@ -33,3 +33,12 @@ Shared cPanel. PHP 8.4 is confirmed. `intl` was reported enabled in the selector
 ## Checks before a milestone is finished
 
 Run the test suite, Pint, and PHPStan. Review new migrations, authorization, and anything that would be reachable without a session. Update the roadmap with what remains unfinished.
+
+## Cursor Cloud specific instructions
+
+- The Cloud Agent image starts without PHP. The environment install adds PHP 8.4 from the ondrej PHP PPA, Composer, and MySQL 8, then runs `composer install`, `npm ci`, and `npm run build`. Node 22 is already on the image.
+- `.env.example` names the staging database. The environment points `.env` at local MySQL instead: database `asl_erp`, user `asl`, password `secret` (the same values as GitHub Actions), host `127.0.0.1`, port `3306`. The app is served at `http://127.0.0.1:8000`.
+- On boot, MySQL is started, the `asl_erp` database is created if needed, and `php artisan migrate --force` plus `php artisan db:seed --force` run before `php artisan serve`.
+- `php artisan test` uses SQLite in memory and does not need MySQL. Style check: `vendor/bin/pint --test`. Static analysis: `vendor/bin/phpstan analyse --memory-limit=1G`.
+- Create a local administrator in the shell only. Set `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` (at least 12 characters, with mixed case and a number), run `php artisan asl:create-admin --no-interaction`, then unset `ADMIN_PASSWORD`. Do not write that password into `.env`. If those three variables are present at boot and the email is new, the boot script creates the account.
+- `GET /health` and `GET /up` do not read the database. A response of `Service is available.` is the healthy body.

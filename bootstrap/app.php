@@ -3,6 +3,7 @@
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\GuardQuotationShare;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'permission' => EnsureUserHasPermission::class,
+            'quotation.share' => GuardQuotationShare::class,
         ]);
         $middleware->redirectUsersTo(fn () => route('dashboard'));
         $middleware->preventRequestsDuringMaintenance(except: ['/health', '/up']);

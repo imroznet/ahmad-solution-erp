@@ -1,6 +1,6 @@
 <x-layouts.app title="Dashboard">
     <h1 class="text-xl font-semibold">Dashboard</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Operational counts below come from the database. Quotation, invoice, receivable, VAT, and expense figures are omitted until those modules are installed. No sample amounts are shown.</p>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Operational counts below come from the database. Invoice, receivable, VAT, and expense figures are omitted until those modules are installed. No sample amounts are shown.</p>
 
     <dl class="mt-6 grid gap-4 sm:grid-cols-3">
         <div class="rounded border border-line bg-white px-4 py-3">
@@ -47,6 +47,25 @@
                     <dt class="text-sm text-muted">Within 60 days</dt>
                     <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('company.documents.expiring', ['window' => '60']) }}">{{ $documentExpiry['within_60'] }}</a></dd>
                 </div>
+            </dl>
+        </section>
+    @endif
+
+    @if (is_array($quotationCounts))
+        <section class="mt-8">
+            <h2 class="text-base font-semibold">Quotations</h2>
+            <p class="mt-1 max-w-3xl text-sm text-muted">Counts only. Amounts stay on the quotation itself. Tax is not calculated.</p>
+            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div class="rounded border border-line bg-white px-4 py-3">
+                    <dt class="text-sm text-muted">Open quotations</dt>
+                    <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('quotations.index') }}">{{ $quotationCounts['open'] }}</a></dd>
+                </div>
+                @if ($quotationCounts['awaiting'] !== null)
+                    <div class="rounded border border-line bg-white px-4 py-3">
+                        <dt class="text-sm text-muted">Awaiting approval</dt>
+                        <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('quotations.approvals') }}">{{ $quotationCounts['awaiting'] }}</a></dd>
+                    </div>
+                @endif
             </dl>
         </section>
     @endif

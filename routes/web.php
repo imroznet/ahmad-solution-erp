@@ -13,10 +13,29 @@ use App\Http\Controllers\DocumentCategoryController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
+use App\Http\Controllers\PublicQuotationController;
+use App\Http\Controllers\QuotationApprovalController;
+use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\QuotationShareController;
+use App\Http\Controllers\QuotationWorkflowController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware('quotation.share:read')->group(function (): void {
+    Route::get('/q/{token}', [PublicQuotationController::class, 'show'])
+        ->where('token', '[A-Za-z0-9_-]{43}')
+        ->name('quotations.public.show');
+    Route::get('/q/{token}/pdf', [PublicQuotationController::class, 'pdf'])
+        ->where('token', '[A-Za-z0-9_-]{43}')
+        ->name('quotations.public.pdf');
+});
+
+Route::post('/q/{token}/respond', [PublicQuotationController::class, 'respond'])
+    ->middleware('quotation.share:respond')
+    ->where('token', '[A-Za-z0-9_-]{43}')
+    ->name('quotations.public.respond');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -216,4 +235,64 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/parties/{party}/addresses/{address}/close', [PartyAddressController::class, 'close'])
         ->middleware('permission:parties.addresses.manage')
         ->name('parties.addresses.close');
+
+    Route::get('/quotations', [QuotationController::class, 'index'])
+        ->middleware('permission:quotations.view')
+        ->name('quotations.index');
+    Route::get('/quotations/create', [QuotationController::class, 'create'])
+        ->middleware('permission:quotations.create')
+        ->name('quotations.create');
+    Route::post('/quotations', [QuotationController::class, 'store'])
+        ->middleware('permission:quotations.create')
+        ->name('quotations.store');
+    Route::get('/quotations/approvals', [QuotationApprovalController::class, 'index'])
+        ->middleware('permission:quotations.approve')
+        ->name('quotations.approvals');
+    Route::get('/quotations/{quotation}', [QuotationController::class, 'show'])
+        ->middleware('permission:quotations.view')
+        ->name('quotations.show');
+    Route::get('/quotations/{quotation}/revisions/{revision}', [QuotationController::class, 'revision'])
+        ->middleware('permission:quotations.view')
+        ->whereNumber('revision')
+        ->name('quotations.revisions.show');
+    Route::get('/quotations/{quotation}/revisions/{revision}/pdf', [QuotationController::class, 'pdf'])
+        ->middleware('permission:quotations.view')
+        ->whereNumber('revision')
+        ->name('quotations.pdf');
+    Route::get('/quotations/{quotation}/edit', [QuotationController::class, 'edit'])
+        ->middleware('permission:quotations.update')
+        ->name('quotations.edit');
+    Route::put('/quotations/{quotation}', [QuotationController::class, 'update'])
+        ->middleware('permission:quotations.update')
+        ->name('quotations.update');
+    Route::post('/quotations/{quotation}/revisions', [QuotationController::class, 'storeRevision'])
+        ->middleware('permission:quotations.update')
+        ->name('quotations.revisions.store');
+    Route::post('/quotations/{quotation}/submit', [QuotationWorkflowController::class, 'submit'])
+        ->middleware('permission:quotations.submit')
+        ->name('quotations.submit');
+    Route::post('/quotations/{quotation}/approve', [QuotationWorkflowController::class, 'approve'])
+        ->middleware('permission:quotations.approve')
+        ->name('quotations.approve');
+    Route::post('/quotations/{quotation}/return', [QuotationWorkflowController::class, 'returnToDraft'])
+        ->middleware('permission:quotations.approve')
+        ->name('quotations.return');
+    Route::post('/quotations/{quotation}/send', [QuotationWorkflowController::class, 'send'])
+        ->middleware('permission:quotations.send')
+        ->name('quotations.send');
+    Route::post('/quotations/{quotation}/cancel', [QuotationWorkflowController::class, 'cancel'])
+        ->middleware('permission:quotations.cancel')
+        ->name('quotations.cancel');
+    Route::post('/quotations/{quotation}/expire', [QuotationWorkflowController::class, 'expire'])
+        ->middleware('permission:quotations.update')
+        ->name('quotations.expire');
+    Route::post('/quotations/{quotation}/respond', [QuotationWorkflowController::class, 'respond'])
+        ->middleware('permission:quotations.respond')
+        ->name('quotations.respond');
+    Route::post('/quotations/{quotation}/shares', [QuotationShareController::class, 'store'])
+        ->middleware('permission:quotations.share')
+        ->name('quotations.shares.store');
+    Route::post('/quotations/{quotation}/shares/{share}/revoke', [QuotationShareController::class, 'revoke'])
+        ->middleware('permission:quotations.share')
+        ->name('quotations.shares.revoke');
 });

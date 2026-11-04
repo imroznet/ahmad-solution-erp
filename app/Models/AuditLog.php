@@ -64,6 +64,17 @@ class AuditLog extends Model
             'user_updated' => 'User updated',
             'password_reset' => 'Password reset',
             'role_permissions_updated' => 'Role permissions updated',
+            'company_profile_updated' => 'Company profile updated',
+            'company_address_created' => 'Company address created',
+            'company_address_updated' => 'Company address updated',
+            'company_address_closed' => 'Company address closed',
+            'document_category_created' => 'Document category created',
+            'document_category_updated' => 'Document category updated',
+            'company_document_created' => 'Company document created',
+            'company_document_updated' => 'Company document updated',
+            'company_document_deleted' => 'Company document retired',
+            'company_document_version_added' => 'Document version added',
+            'company_document_downloaded' => 'Document downloaded',
             default => str_replace('_', ' ', (string) $this->event),
         };
     }

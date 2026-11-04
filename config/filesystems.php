@@ -33,8 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            // Signed public file routes stay off. Private documents will be
-            // downloaded through authenticated controllers in a later milestone.
+            // Signed public file routes stay off. Company files are downloaded
+            // through authenticated controllers.
             'serve' => false,
             'throw' => false,
             'report' => false,

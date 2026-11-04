@@ -28,6 +28,12 @@
                 @if ($currentUser?->hasPermission('dashboard.view'))
                     <a href="{{ route('dashboard') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('dashboard'), 'hover:bg-white/10' => ! request()->routeIs('dashboard')])>Dashboard</a>
                 @endif
+                @if ($currentUser?->hasPermission('company.view'))
+                    <a href="{{ route('company.show') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('company.show', 'company.edit', 'company.addresses.*'), 'hover:bg-white/10' => ! request()->routeIs('company.show', 'company.edit', 'company.addresses.*')])>Company</a>
+                @endif
+                @if ($currentUser?->hasPermission('company.documents.view'))
+                    <a href="{{ route('company.documents.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('company.documents.*', 'company.categories.*'), 'hover:bg-white/10' => ! request()->routeIs('company.documents.*', 'company.categories.*')])>Documents</a>
+                @endif
                 @if ($currentUser?->hasPermission('users.view'))
                     <a href="{{ route('users.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('users.*'), 'hover:bg-white/10' => ! request()->routeIs('users.*')])>Users</a>
                 @endif
@@ -46,7 +52,7 @@
         <div class="min-w-0">
             <header class="flex items-center justify-between border-b border-line bg-white px-4 py-3">
                 <button type="button" class="rounded border border-line px-3 py-2 text-sm lg:hidden" @click="sidebar = true">Menu</button>
-                <p class="hidden text-sm text-muted lg:block">{{ config('asl.company.legal_name') }}</p>
+                <p class="hidden text-sm text-muted lg:block">{{ $companyLegalName ?? config('asl.company.legal_name') }}</p>
                 <div class="flex items-center gap-4 text-sm">
                     <span>{{ $currentUser?->name }}</span>
                     <form method="POST" action="{{ route('logout') }}">

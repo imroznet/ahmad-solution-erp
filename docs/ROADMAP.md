@@ -31,10 +31,24 @@ Not done, and not claimed:
 
 ## Milestone 2 — company profile and documents
 
-- Company profile, including TIN, BIN, trade licence, and RJSC fields
-- Separate registered office and head office addresses, plus branch, project, factory, and other
-- Document categories, private uploads, versions, expiry dates, and access logs
-- Renewal visibility on the dashboard from real expiry dates
+Done in this branch:
+
+- One company profile, including TIN, BIN, trade licence, RJSC, logo, and financial-year dates
+- Separate registered office and corporate/head office addresses, plus branch, project, factory, and other
+- Address history: close and replace keep the previous row
+- One active correspondence default and one active billing default
+- Document categories, private uploads, versions, and soft-delete retirement
+- Expiry counts for expired and 7, 15, 30, and 60 days, from the database, in Asia/Dhaka
+- phpMyAdmin category SQL and an upgrade script for a foundation database
+
+Not done in this milestone:
+
+- Email reminders for expiry. The dashboard is the reminder until cron mail is added.
+- Customers, suppliers, quotations, challans, invoices
+- Mushak, VDS, AIT, and the general ledger
+- Share links
+- A strict Content-Security-Policy
+- Deployment onto `stage.ahmad.bd`
 
 ## Milestone 3 — parties
 

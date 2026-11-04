@@ -17,6 +17,40 @@
         </div>
     </dl>
 
+    @if (is_array($documentExpiry))
+        <section class="mt-8">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 class="text-base font-semibold">Document expiry</h2>
+                    <p class="mt-1 max-w-3xl text-sm text-muted">Dates use Asia/Dhaka. A document expiring within 7 days is also counted within 15, 30, and 60 days. Documents with no expiry date are not included.</p>
+                </div>
+                <a href="{{ route('company.documents.expiring') }}" class="text-sm font-medium text-brand hover:text-brand-dark">Open the expiry list</a>
+            </div>
+            <dl class="mt-4 grid gap-4 sm:grid-cols-5">
+                <div class="rounded border border-line bg-white px-4 py-3">
+                    <dt class="text-sm text-muted">Expired</dt>
+                    <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('company.documents.expiring', ['window' => 'expired']) }}">{{ $documentExpiry['expired'] }}</a></dd>
+                </div>
+                <div class="rounded border border-line bg-white px-4 py-3">
+                    <dt class="text-sm text-muted">Within 7 days</dt>
+                    <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('company.documents.expiring', ['window' => '7']) }}">{{ $documentExpiry['within_7'] }}</a></dd>
+                </div>
+                <div class="rounded border border-line bg-white px-4 py-3">
+                    <dt class="text-sm text-muted">Within 15 days</dt>
+                    <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('company.documents.expiring', ['window' => '15']) }}">{{ $documentExpiry['within_15'] }}</a></dd>
+                </div>
+                <div class="rounded border border-line bg-white px-4 py-3">
+                    <dt class="text-sm text-muted">Within 30 days</dt>
+                    <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('company.documents.expiring', ['window' => '30']) }}">{{ $documentExpiry['within_30'] }}</a></dd>
+                </div>
+                <div class="rounded border border-line bg-white px-4 py-3">
+                    <dt class="text-sm text-muted">Within 60 days</dt>
+                    <dd class="mt-1 text-2xl font-semibold"><a href="{{ route('company.documents.expiring', ['window' => '60']) }}">{{ $documentExpiry['within_60'] }}</a></dd>
+                </div>
+            </dl>
+        </section>
+    @endif
+
     <section class="mt-8">
         <h2 class="text-base font-semibold">Recent activity</h2>
         @if ($recentActivity->isEmpty())

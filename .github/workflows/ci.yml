@@ -85,7 +85,8 @@ jobs:
           php artisan migrate --force --no-interaction
           php artisan db:seed --force --no-interaction
           php artisan asl:export-access-sql
-          git diff --exit-code -- deploy/reference-data.sql
+          php artisan asl:export-company-sql
+          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql
           cat > /tmp/mysql-client.cnf <<'EOF'
           [client]
           host=127.0.0.1
@@ -101,6 +102,9 @@ jobs:
             mysqldump --defaults-extra-file=/tmp/mysql-client.cnf --no-tablespaces --skip-lock-tables --no-data asl_erp
             mysqldump --defaults-extra-file=/tmp/mysql-client.cnf --no-tablespaces --skip-lock-tables --no-create-info asl_erp migrations
           } > deploy/mysql-schema.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-company-module.sql
+          categories=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM document_categories" asl_erp)
+          test "$categories" = "20"
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

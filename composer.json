@@ -19,7 +19,7 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12"
+        "phpunit/phpunit": "^13.4.5"
     },
     "suggest": {
         "ext-bcmath": "Preferred calculator for decimal money. brick/math uses a pure-PHP fallback when bcmath and gmp are unavailable.",

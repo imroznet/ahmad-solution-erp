@@ -19,7 +19,7 @@ This file replaces the Laravel skeleton's Boost bootstrap. Laravel Boost is not 
 - PHP 8.4 and Laravel 13. Commit `composer.lock`.
 - Money and tax math go through `App\Support\Money` and `App\Support\Decimal`. Never use `float` for money.
 - Permissions are registered in `App\Authorization\PermissionCatalog`. Runtime screens may change which role receives them. The super administrator role always keeps every permission.
-- Private files stay on the `local` disk under `storage/app/private`. The disk's public `serve` route is disabled.
+- Private files stay on the `local` disk under `storage/app/private`. Downloads require a permission. The disk's public `serve` route is disabled.
 - Health checks are `/health` and `/up`. They must not read the database and must not return secrets, versions, or exception text.
 - Do not add a public Artisan runner or an unauthenticated migration route.
 - `.env`, passwords, certificates, database dumps, and customer records stay out of Git.

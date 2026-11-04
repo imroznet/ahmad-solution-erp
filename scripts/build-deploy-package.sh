@@ -3,6 +3,7 @@
 #   composer install --no-dev --optimize-autoloader
 #   npm ci && npm run build
 #   php artisan asl:export-access-sql
+#   php artisan asl:export-company-sql
 #   a MySQL schema dump at deploy/mysql-schema.sql
 set -euo pipefail
 
@@ -29,7 +30,7 @@ if [[ ! -f "$ROOT/public/build/manifest.json" ]]; then
     exit 1
 fi
 
-for required in deploy/mysql-schema.sql deploy/reference-data.sql deploy/generate-admin-sql.php; do
+for required in deploy/mysql-schema.sql deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/generate-admin-sql.php; do
     if [[ ! -f "$ROOT/$required" ]]; then
         echo "Missing ${required}." >&2
         exit 1

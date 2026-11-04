@@ -2,7 +2,7 @@
 
 The staging database is `ahmadcom_asl_erp`. The host and password come from `.env`. Monetary columns will be `DECIMAL`, never `FLOAT` or `DOUBLE`.
 
-## Tables in this milestone
+## Tables in the schema
 
 | Table | Purpose |
 | --- | --- |
@@ -13,31 +13,21 @@ The staging database is `ahmadcom_asl_erp`. The host and password come from `.en
 | `jobs`, `job_batches`, `failed_jobs` | Database queue. |
 | `roles`, `permissions` | Role catalogue and code-owned permission slugs. |
 | `permission_role`, `role_user` | Assignments. Composite primary keys. |
-| `audit_logs` | Append-only security and administration history. |
+| `audit_logs` | Append-only security and administration history, including private document downloads. |
+| `company_profiles` | The single company identity. TIN and BIN are stored as entered. |
+| `company_addresses` | Registered office, corporate office, and other addresses. Closed rows are kept. |
+| `document_categories` | System and custom categories. System rows are not deleted. |
+| `company_documents` | Document metadata. Retirement is a soft delete. |
+| `company_document_versions` | One stored file per version. Paths are random names on the private disk. |
 | `migrations` | Laravel migration ledger. |
 
 `permissions.permission_group` avoids the reserved word `group`.
 
+There is no `company_settings` table. The single profile holds the currency, financial year, and contact fields. Download history is an `audit_logs` row, not a separate access-log table.
+
 ## Planned tables
 
 These tables are not created yet.
-
-### Company
-
-- `company_profiles`
-- `company_addresses` with a type of registered office, head office, branch, project office, factory, or other
-- `company_settings`
-
-Registered office and head office are separate address rows. A document template chooses an address subject to the statutory rule for that document.
-
-### Legal documents
-
-- `document_categories`
-- `company_documents`
-- `document_versions`
-- `document_access_logs`
-
-Files stay on the private disk. The database stores the path and metadata, not a public URL.
 
 ### Parties
 

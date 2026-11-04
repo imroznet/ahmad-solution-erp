@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Authorization\PermissionCatalog;
+use App\Models\CompanyProfile;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Auth\Events\Failed;
@@ -58,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
             'roles.*',
             'audit.index',
             'system.status',
+            'company.*',
         ], function ($view): void {
             $user = auth()->user();
 
@@ -65,7 +67,15 @@ class AppServiceProvider extends ServiceProvider
                 $user->loadMissing('roles.permissions');
             }
 
+            $companyName = config('asl.company.legal_name');
+            $storedName = CompanyProfile::query()->value('legal_name');
+
+            if (is_string($storedName) && $storedName !== '') {
+                $companyName = $storedName;
+            }
+
             $view->with('currentUser', $user instanceof User ? $user : null);
+            $view->with('companyLegalName', is_string($companyName) ? $companyName : 'Ahmad Solution Ltd.');
         });
 
         Event::listen(Login::class, function (Login $event): void {

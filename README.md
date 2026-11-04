@@ -1,6 +1,6 @@
 # Ahmad Solution Ltd. Business Management System
 
-Internal business management system for Ahmad Solution Ltd., Bangladesh. The first release is an application foundation: authentication, roles, audit logging, and a cPanel deployment package. Commercial, tax, and accounting modules are planned and are not implemented yet.
+Internal business management system for Ahmad Solution Ltd., Bangladesh. This release has the application foundation and the company profile: legal identity, separate addresses, and private legal-document storage. Commercial, tax, and accounting modules are planned and are not implemented yet.
 
 This application is separate from the legacy public website. Do not migrate or modify that site as part of this project.
 

@@ -22,11 +22,12 @@ GitHub Actions on this repository does all of the following:
 3. `composer audit`
 4. `npm ci` and `npm run build`
 5. `php artisan migrate` against a disposable MySQL 8.4 service
-6. A schema dump and the reference-data check
-7. `composer install --no-dev --optimize-autoloader`
-8. `scripts/build-deploy-package.sh`
+6. A schema dump, the access-control SQL check, and the company-module SQL check
+7. The company upgrade script is imported into that MySQL database and must leave 20 document categories
+8. `composer install --no-dev --optimize-autoloader`
+9. `scripts/build-deploy-package.sh`
 
-Download `ahmad-solution-erp-<git-sha>.zip` from the workflow artifacts. The zip contains `vendor`, `public/build`, `deploy/mysql-schema.sql`, and `deploy/reference-data.sql`. It does not contain `.env`.
+Download `ahmad-solution-erp-<git-sha>.zip` from the workflow artifacts. The zip contains `vendor`, `public/build`, `deploy/mysql-schema.sql`, `deploy/reference-data.sql`, `deploy/company-reference-data.sql`, and `deploy/upgrade-company-module.sql`. It does not contain `.env`.
 
 ## Configure the environment
 
@@ -47,7 +48,10 @@ Create `/home/ahmadcom/laravel-stage/.env` from `.env.example` and set:
 - `DB_USERNAME=ahmadcom_asl_user`
 - `DB_PASSWORD` to the password stored in cPanel, not in Git
 - `LOG_LEVEL=warning`
+- `DOCUMENT_MAX_KILOBYTES=10240` and `LOGO_MAX_KILOBYTES=2048` unless the host limits need to be lower
 - SMTP values only when mail is ready. Until then leave `MAIL_MAILER=log`
+
+`public/.user.ini` allows 20M uploads. Keep the document limit below `upload_max_filesize` and `post_max_size`. Private files are written to `storage/app/private`. That directory must stay outside the domain document root and be writable by the account user. Do not copy certificates into `public/`.
 
 `SESSION_SECURE_COOKIE` can stay empty. An `https` application URL marks the cookie Secure. If sign-in loops after HTTPS is enabled, the web server is probably forwarding HTTP to PHP. Set `TRUSTED_PROXIES` to the proxy address reported by the host. Do not use `*`.
 
@@ -63,15 +67,22 @@ Preferred, once a one-off cPanel cron or Terminal exists:
 
 Confirm the PHP 8.4 binary path in the host's PHP selector. Delete the cron as soon as it has run. Do not leave migrate on a schedule.
 
-Until a CLI exists, import these files in phpMyAdmin in order:
+Until a CLI exists, import these files in phpMyAdmin in order for an empty database:
 
 1. `deploy/mysql-schema.sql`
 2. `deploy/reference-data.sql`
-3. Administrator SQL from the generator below
+3. `deploy/company-reference-data.sql`
+4. Administrator SQL from the generator below
 
 Stop if an import reports an existing table or a duplicate key. Do not drop the staging database to force it.
 
-The schema dump includes the `migrations` rows so a later `artisan migrate` does not try to create the same tables again.
+The schema dump includes the `migrations` rows so a later `artisan migrate` does not try to create the same tables again. `company-reference-data.sql` inserts the document categories only. It has no company profile and no certificates.
+
+### Foundation database that is already imported
+
+If milestone 1 was imported and the company tables are not there, do not import `mysql-schema.sql` again. Import `deploy/upgrade-company-module.sql` once. It creates the company tables if they are missing, adds the company permissions and category rows, grants the new permissions without deleting current role grants, and records the two new migration names. Run the whole file in one phpMyAdmin session so the `sql_mode` change applies to the inserts.
+
+`artisan migrate --force` on a foundation database does the same work. The permission migration adds the new company grants and does not take older permissions away from a customized role.
 
 ### First administrator
 

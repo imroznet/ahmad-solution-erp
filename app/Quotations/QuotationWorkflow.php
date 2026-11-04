@@ -7,6 +7,7 @@ use App\Models\QuotationApproval;
 use App\Models\QuotationResponse;
 use App\Models\QuotationRevision;
 use App\Models\QuotationSend;
+use App\Models\QuotationShareToken;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -104,17 +105,7 @@ final class QuotationWorkflow
     {
         DB::transaction(function () use ($quotation, $actor): void {
             [$quotation, $revision] = $this->lock->current((int) $quotation->getKey());
-
-            if (! $revision->isPastValidity()) {
-                throw new QuotationRuleException('valid_until', 'This quotation is still within its validity date.');
-            }
-
-            $this->move($quotation, $revision, QuotationStatus::EXPIRED);
-            $revision->forceFill([
-                'expired_at' => now(),
-                'expired_by' => $actor->getKey(),
-            ])->save();
-            $this->audit->record('quotation_expired', $quotation, newValues: $this->payload($quotation, $revision), actor: $actor);
+            $this->markExpired($quotation, $revision, $actor);
         });
     }
 
@@ -129,65 +120,161 @@ final class QuotationWorkflow
         ?int $shareTokenId,
         ?string $ipAddress,
         ?string $userAgent,
+        ?QuotationShareToken $shareToken = null,
     ): QuotationResponse {
-        return DB::transaction(function () use ($quotation, $actor, $decision, $source, $respondentName, $designation, $remarks, $shareTokenId, $ipAddress, $userAgent): QuotationResponse {
-            [$quotation, $revision] = $this->lock->current((int) $quotation->getKey());
-
-            if (! in_array($decision, ['accepted', 'rejected'], true)) {
-                throw new QuotationRuleException('decision', 'Choose acceptance or rejection.');
+        $outcome = DB::transaction(function () use ($quotation, $actor, $decision, $source, $respondentName, $designation, $remarks, $shareTokenId, $ipAddress, $userAgent, $shareToken): array {
+            if ($shareToken instanceof QuotationShareToken) {
+                $quotation = $this->lockedShareQuotation($shareToken);
+                $shareTokenId = (int) $shareToken->getKey();
             }
 
-            $existing = QuotationResponse::query()->where('quotation_revision_id', $revision->getKey())->first();
-
-            if ($existing instanceof QuotationResponse) {
-                if ($existing->getAttribute('decision') === $decision) {
-                    return $existing;
-                }
-
-                throw new QuotationRuleException('decision', 'This revision already has a different response.');
-            }
-
-            $target = $decision === 'accepted' ? QuotationStatus::ACCEPTED : QuotationStatus::REJECTED;
-            $this->move($quotation, $revision, $target);
-
-            try {
-                $response = QuotationResponse::query()->create([
-                    'quotation_revision_id' => $revision->getKey(),
-                    'decision' => $decision,
-                    'source' => $source,
-                    'respondent_name' => $respondentName,
-                    'respondent_designation' => $this->limited($designation, 120),
-                    'remarks' => $this->limited($remarks, 2000),
-                    'recorded_by' => $actor?->getKey(),
-                    'quotation_share_token_id' => $shareTokenId,
-                    'ip_address' => $this->limited($ipAddress, 45),
-                    'user_agent' => $this->limited($userAgent, 512),
-                    'created_at' => now(),
-                ]);
-            } catch (UniqueConstraintViolationException) {
-                $winner = QuotationResponse::query()->where('quotation_revision_id', $revision->getKey())->first();
-
-                if ($winner instanceof QuotationResponse && $winner->getAttribute('decision') === $decision) {
-                    return $winner;
-                }
-
-                throw new QuotationRuleException('decision', 'This revision already has a different response.');
-            }
-
-            $this->audit->record(
-                $decision === 'accepted' ? 'quotation_accepted' : 'quotation_rejected',
+            return $this->captureResponse(
                 $quotation,
-                newValues: [
-                    ...$this->payload($quotation, $revision),
-                    'source' => $source,
-                    'respondent_name' => $respondentName,
-                    'share_id' => $shareTokenId,
-                ],
-                actor: $actor,
+                $actor,
+                $decision,
+                $source,
+                $respondentName,
+                $designation,
+                $remarks,
+                $shareTokenId,
+                $ipAddress,
+                $userAgent,
             );
-
-            return $response;
         });
+
+        if ($outcome['expired']) {
+            throw new QuotationRuleException('decision', 'This quotation is past its validity date and is now expired.');
+        }
+
+        if (! $outcome['response'] instanceof QuotationResponse) {
+            throw new QuotationRuleException('decision', 'This quotation could not be updated.');
+        }
+
+        return $outcome['response'];
+    }
+
+    /**
+     * @return array{expired: bool, response: ?QuotationResponse}
+     */
+    private function captureResponse(
+        Quotation $quotation,
+        ?User $actor,
+        string $decision,
+        string $source,
+        string $respondentName,
+        ?string $designation,
+        ?string $remarks,
+        ?int $shareTokenId,
+        ?string $ipAddress,
+        ?string $userAgent,
+    ): array {
+        [$quotation, $revision] = $this->lock->current((int) $quotation->getKey());
+
+        if (! in_array($decision, ['accepted', 'rejected'], true)) {
+            throw new QuotationRuleException('decision', 'Choose acceptance or rejection.');
+        }
+
+        $existing = QuotationResponse::query()->where('quotation_revision_id', $revision->getKey())->first();
+
+        if ($existing instanceof QuotationResponse) {
+            if ($existing->getAttribute('decision') === $decision) {
+                return ['expired' => false, 'response' => $existing];
+            }
+
+            throw new QuotationRuleException('decision', 'This revision already has a different response.');
+        }
+
+        if ($revision->isPastValidity()) {
+            if (QuotationStatus::canMove($revision->stringAttribute('status'), QuotationStatus::EXPIRED)) {
+                $this->markExpired($quotation, $revision, $actor);
+            }
+
+            if ($revision->stringAttribute('status') === QuotationStatus::EXPIRED) {
+                return ['expired' => true, 'response' => null];
+            }
+        }
+
+        $target = $decision === 'accepted' ? QuotationStatus::ACCEPTED : QuotationStatus::REJECTED;
+        $this->move($quotation, $revision, $target);
+
+        try {
+            $response = QuotationResponse::query()->create([
+                'quotation_revision_id' => $revision->getKey(),
+                'decision' => $decision,
+                'source' => $source,
+                'respondent_name' => $respondentName,
+                'respondent_designation' => $this->limited($designation, 120),
+                'remarks' => $this->limited($remarks, 2000),
+                'recorded_by' => $actor?->getKey(),
+                'quotation_share_token_id' => $shareTokenId,
+                'ip_address' => $this->limited($ipAddress, 45),
+                'user_agent' => $this->limited($userAgent, 512),
+                'created_at' => now(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            $winner = QuotationResponse::query()->where('quotation_revision_id', $revision->getKey())->first();
+
+            if ($winner instanceof QuotationResponse && $winner->getAttribute('decision') === $decision) {
+                return ['expired' => false, 'response' => $winner];
+            }
+
+            throw new QuotationRuleException('decision', 'This revision already has a different response.');
+        }
+
+        $this->audit->record(
+            $decision === 'accepted' ? 'quotation_accepted' : 'quotation_rejected',
+            $quotation,
+            newValues: [
+                ...$this->payload($quotation, $revision),
+                'source' => $source,
+                'respondent_name' => $respondentName,
+                'share_id' => $shareTokenId,
+            ],
+            actor: $actor,
+        );
+
+        return ['expired' => false, 'response' => $response];
+    }
+
+    private function markExpired(Quotation $quotation, QuotationRevision $revision, ?User $actor): void
+    {
+        if (! $revision->isPastValidity()) {
+            throw new QuotationRuleException('valid_until', 'This quotation is still within its validity date.');
+        }
+
+        $this->move($quotation, $revision, QuotationStatus::EXPIRED);
+        $revision->forceFill([
+            'expired_at' => now(),
+            'expired_by' => $actor?->getKey(),
+        ])->save();
+        $this->audit->record('quotation_expired', $quotation, newValues: $this->payload($quotation, $revision), actor: $actor);
+    }
+
+    private function lockedShareQuotation(QuotationShareToken $token): Quotation
+    {
+        $locked = QuotationShareToken::query()->whereKey($token->getKey())->lockForUpdate()->first();
+
+        if (! $locked instanceof QuotationShareToken || ! $locked->isUsable()) {
+            throw new QuotationRuleException('decision', 'This quotation link is not available.');
+        }
+
+        $revision = QuotationRevision::query()->find($locked->quotation_revision_id);
+
+        if (! $revision instanceof QuotationRevision) {
+            throw new QuotationRuleException('decision', 'This quotation link is not available.');
+        }
+
+        $quotation = Quotation::query()->find($revision->quotation_id);
+
+        if (! $quotation instanceof Quotation) {
+            throw new QuotationRuleException('decision', 'This quotation link is not available.');
+        }
+
+        if ((int) $quotation->current_revision_id !== (int) $revision->getKey()) {
+            throw new QuotationRuleException('decision', 'This revision has been superseded and can no longer be accepted from this link.');
+        }
+
+        return $quotation;
     }
 
     private function assertCanApprove(QuotationRevision $revision, User $actor): void

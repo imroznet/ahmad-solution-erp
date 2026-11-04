@@ -153,8 +153,10 @@ jobs:
           upgraded_documents=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='document-manager' AND p.slug='quotations.view'" asl_upgrade)
           test "$upgraded_documents" = "0"
           DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction
-          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           DB_DATABASE=asl_quotation_lock php scripts/check-quotation-number-lock.php
+          DB_DATABASE=asl_quotation_year php scripts/check-quotation-new-year-lock.php
+          DB_DATABASE=asl_quotation_totals php scripts/check-quotation-total-bounds.php
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

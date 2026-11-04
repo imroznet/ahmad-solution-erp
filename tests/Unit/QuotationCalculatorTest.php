@@ -96,4 +96,31 @@ class QuotationCalculatorTest extends TestCase
         $this->assertFalse(QuotationStatus::canMove(QuotationStatus::ACCEPTED, QuotationStatus::DRAFT));
         $this->assertFalse(QuotationStatus::canMove(QuotationStatus::CANCELLED, QuotationStatus::SENT));
     }
+
+    public function test_ten_maximum_lines_fit_and_eleven_exceed_the_stored_total(): void
+    {
+        $calculator = new QuotationCalculator;
+        $line = [
+            'description' => 'Maximum line',
+            'unit' => 'job',
+            'quantity' => '9999999.9999',
+            'unit_price' => '99999999.99',
+        ];
+        $lineTotal = $calculator->lineTotal('9999999.9999', '99999999.99');
+
+        $this->assertSame('999999999890000.00', $lineTotal);
+
+        $ten = $calculator->normalizeLines(array_fill(0, 10, $line));
+        $this->assertCount(10, $ten);
+        $this->assertSame('9999999998900000.00', $calculator->sum(array_column($ten, 'line_total')));
+
+        try {
+            $calculator->normalizeLines(array_fill(0, 11, $line));
+            $this->fail('Eleven maximum lines must be rejected before they are stored.');
+        } catch (QuotationRuleException $exception) {
+            $this->assertSame('lines', $exception->field);
+            $this->assertStringContainsString('10999999998790000.00', $exception->getMessage());
+            $this->assertStringContainsString(QuotationCalculator::TOTAL_MAX, $exception->getMessage());
+        }
+    }
 }

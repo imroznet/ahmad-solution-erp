@@ -23,6 +23,18 @@ class QuotationWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00', 'Asia/Dhaka'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_the_creator_cannot_approve_and_a_draft_cannot_be_accepted(): void
     {
         $sales = $this->userWithRole('sales-executive');
@@ -236,9 +248,180 @@ class QuotationWorkflowTest extends TestCase
         $this->actingAs($sales)->post(route('quotations.send', $quotation))->assertForbidden();
     }
 
-    private function advanceToSent(User $sales, User $manager, Party $customer): Quotation
+    public function test_an_aggregate_above_the_column_precision_is_rejected_before_it_is_stored(): void
     {
-        $quotation = $this->createQuotation($sales, $customer);
+        $sales = $this->userWithRole('sales-executive');
+        $customer = $this->party();
+        $lines = [];
+
+        for ($index = 0; $index < 11; $index++) {
+            $lines[] = [
+                'description' => 'Maximum line '.$index,
+                'unit' => 'job',
+                'quantity' => '9999999.9999',
+                'unit_price' => '99999999.99',
+            ];
+        }
+
+        $response = $this->actingAs($sales)->from(route('quotations.create'))->post('/quotations', $this->payload($customer, [
+            'lines' => $lines,
+        ]));
+        $response->assertRedirect(route('quotations.create'));
+        $response->assertSessionHasErrors('lines');
+        $errors = session('errors');
+        $this->assertNotNull($errors);
+        $this->assertStringContainsString('10999999998790000.00', (string) $errors->first('lines'));
+        $this->assertDatabaseCount('quotations', 0);
+
+        try {
+            app(QuotationWriter::class)->create($sales, $this->payload($customer, [
+                'lines' => $lines,
+            ]));
+            $this->fail('The writer must reject the aggregate before inserting a quotation.');
+        } catch (QuotationRuleException $exception) {
+            $this->assertSame('lines', $exception->field);
+        }
+
+        $this->assertDatabaseCount('quotations', 0);
+    }
+
+    public function test_a_response_on_the_validity_date_is_recorded(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-12-01 15:00:00', 'Asia/Dhaka'));
+        $sales = $this->userWithRole('sales-executive');
+        $manager = $this->userWithRole('sales-manager');
+        $quotation = $this->advanceToSent($sales, $manager, $this->party());
+
+        $this->actingAs($sales)->post(route('quotations.respond', $quotation), [
+            'decision' => 'accepted',
+            'respondent_name' => 'Nadia Rahman',
+            'confirmed' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame(QuotationStatus::ACCEPTED, $quotation->fresh()?->status);
+        $this->assertDatabaseCount('quotation_responses', 1);
+        $this->assertDatabaseMissing('audit_logs', ['event' => 'quotation_expired']);
+    }
+
+    public function test_a_response_after_the_validity_date_expires_the_quotation_without_a_response(): void
+    {
+        $sales = $this->userWithRole('sales-executive');
+        $manager = $this->userWithRole('sales-manager');
+        $customer = $this->party();
+        $quotation = $this->advanceToSent($sales, $manager, $customer, [
+            'quotation_date' => '2026-11-01',
+            'valid_until' => '2026-11-10',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-11-11 12:00:00', 'Asia/Dhaka'));
+        $payload = [
+            'decision' => 'accepted',
+            'respondent_name' => 'Nadia Rahman',
+            'confirmed' => '1',
+        ];
+
+        $response = $this->actingAs($sales)->from(route('quotations.show', $quotation))->post(route('quotations.respond', $quotation), $payload);
+        $response->assertRedirect(route('quotations.show', $quotation));
+        $response->assertSessionHasErrors('decision');
+
+        $quotation->refresh();
+        $this->assertSame(QuotationStatus::EXPIRED, $quotation->status);
+        $this->assertSame(QuotationStatus::EXPIRED, $quotation->currentRevision?->status);
+        $this->assertSame($sales->id, $quotation->currentRevision?->expired_by);
+        $this->assertDatabaseCount('quotation_responses', 0);
+        $this->assertSame(1, DB::table('audit_logs')->where('event', 'quotation_expired')->count());
+
+        $cookie = $response->getCookie((string) config('session.cookie'));
+        $this->assertNotNull($cookie);
+        $this->withCookie($cookie->getName(), $cookie->getValue())
+            ->actingAs($sales)
+            ->get(route('quotations.show', $quotation))
+            ->assertOk()
+            ->assertSee('past its validity date')
+            ->assertSee('Expired');
+
+        $this->actingAs($sales)->post(route('quotations.respond', $quotation), $payload)->assertForbidden();
+
+        try {
+            app(QuotationWorkflow::class)->respond(
+                $quotation->fresh() ?? $quotation,
+                $sales,
+                'rejected',
+                'internal',
+                'Nadia Rahman',
+                null,
+                null,
+                null,
+                '127.0.0.1',
+                'phpunit',
+            );
+            $this->fail('An expired quotation cannot record another response.');
+        } catch (QuotationRuleException $exception) {
+            $this->assertSame('decision', $exception->field);
+        }
+
+        $this->assertDatabaseCount('quotation_responses', 0);
+        $this->assertSame(1, DB::table('audit_logs')->where('event', 'quotation_expired')->count());
+    }
+
+    public function test_an_existing_acceptance_is_not_expired_after_the_validity_date(): void
+    {
+        $sales = $this->userWithRole('sales-executive');
+        $manager = $this->userWithRole('sales-manager');
+        $quotation = $this->advanceToSent($sales, $manager, $this->party());
+        $payload = [
+            'decision' => 'accepted',
+            'respondent_name' => 'Nadia Rahman',
+            'confirmed' => '1',
+        ];
+
+        $this->actingAs($sales)->post(route('quotations.respond', $quotation), $payload)->assertRedirect();
+        Carbon::setTestNow(Carbon::parse('2026-12-02 09:00:00', 'Asia/Dhaka'));
+        $quotation = $quotation->fresh() ?? $quotation;
+
+        $again = app(QuotationWorkflow::class)->respond(
+            $quotation,
+            $sales,
+            'accepted',
+            'internal',
+            'Nadia Rahman',
+            null,
+            null,
+            null,
+            '127.0.0.1',
+            'phpunit',
+        );
+        $this->assertSame('accepted', $again->getAttribute('decision'));
+
+        try {
+            app(QuotationWorkflow::class)->respond(
+                $quotation->fresh() ?? $quotation,
+                $sales,
+                'rejected',
+                'internal',
+                'Nadia Rahman',
+                null,
+                null,
+                null,
+                '127.0.0.1',
+                'phpunit',
+            );
+            $this->fail('A different decision must stay rejected after the validity date.');
+        } catch (QuotationRuleException $exception) {
+            $this->assertSame('decision', $exception->field);
+        }
+
+        $this->assertSame(QuotationStatus::ACCEPTED, $quotation->fresh()?->status);
+        $this->assertDatabaseCount('quotation_responses', 1);
+        $this->assertDatabaseMissing('audit_logs', ['event' => 'quotation_expired']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function advanceToSent(User $sales, User $manager, Party $customer, array $overrides = []): Quotation
+    {
+        $quotation = $this->createQuotation($sales, $customer, $overrides);
         $this->actingAs($sales)->post(route('quotations.submit', $quotation))->assertRedirect();
         $this->actingAs($manager)->post(route('quotations.approve', $quotation))->assertRedirect();
         $this->actingAs($sales)->post(route('quotations.send', $quotation), [

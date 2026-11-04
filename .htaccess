@@ -1,0 +1,5 @@
+# If the domain document root is pointed at the project root by mistake,
+# refuse every request. The document root must be the public directory.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>

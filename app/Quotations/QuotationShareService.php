@@ -154,44 +154,35 @@ final class QuotationShareService
         ?string $designation,
         ?string $remarks,
     ): QuotationResponse {
-        return DB::transaction(function () use ($token, $decision, $respondentName, $designation, $remarks): QuotationResponse {
-            $locked = QuotationShareToken::query()->whereKey($token->getKey())->lockForUpdate()->first();
+        $request = request();
 
-            if (! $locked instanceof QuotationShareToken || ! $locked->isUsable()) {
-                throw new QuotationRuleException('decision', 'This quotation link is not available.');
-            }
+        return $this->workflow->respond(
+            $this->quotationForToken($token),
+            null,
+            $decision,
+            'public_share',
+            $respondentName,
+            $designation,
+            $remarks,
+            (int) $token->getKey(),
+            $request->ip(),
+            $this->agent($request),
+            $token,
+        );
+    }
 
-            $revision = QuotationRevision::query()->find($locked->quotation_revision_id);
+    /**
+     * The workflow locks the token and the current revision in one transaction.
+     * A missing quotation is replaced there; this lookup only supplies the argument.
+     */
+    private function quotationForToken(QuotationShareToken $token): Quotation
+    {
+        $revision = QuotationRevision::query()->find($token->quotation_revision_id);
+        $quotation = $revision instanceof QuotationRevision
+            ? Quotation::query()->find($revision->quotation_id)
+            : null;
 
-            if (! $revision instanceof QuotationRevision) {
-                throw new QuotationRuleException('decision', 'This quotation link is not available.');
-            }
-
-            $quotation = Quotation::query()->find($revision->quotation_id);
-
-            if (! $quotation instanceof Quotation) {
-                throw new QuotationRuleException('decision', 'This quotation link is not available.');
-            }
-
-            if ((int) $quotation->current_revision_id !== (int) $revision->getKey()) {
-                throw new QuotationRuleException('decision', 'This revision has been superseded and can no longer be accepted from this link.');
-            }
-
-            $request = request();
-
-            return $this->workflow->respond(
-                $quotation,
-                null,
-                $decision,
-                'public_share',
-                $respondentName,
-                $designation,
-                $remarks,
-                (int) $locked->getKey(),
-                $request->ip(),
-                $this->agent($request),
-            );
-        });
+        return $quotation instanceof Quotation ? $quotation : new Quotation;
     }
 
     private function log(?int $tokenId, string $event): void

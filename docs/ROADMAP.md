@@ -76,8 +76,9 @@ Done in this branch:
 - Draft quotations for an active BDT customer, with the customer role stored on the quotation
 - A customer, contact, and address snapshot on each revision, so a later party edit does not rewrite that revision
 - Hand-typed lines: description, unit, quantity, and unit price. No product catalogue
-- `QT-{Asia/Dhaka year}-{sequence}` numbers allocated under a row lock, with a unique number index
-- Quantity at 4 decimal places and money at 2. Extra digits are rejected. A line total rounds half away from zero, and the quotation total sums those rounded lines. Tax is excluded and is not calculated
+- `QT-{Asia/Dhaka year}-{sequence}` numbers allocated under a row lock, with a unique number index. The first number of a Dhaka year inserts that year's row with `INSERT IGNORE` before the lock. A failed create does not consume the number
+- Quantity at 4 decimal places and money at 2. Extra digits are rejected. A line total rounds half away from zero, and the quotation total sums those rounded lines. A total above `9999999999999999.99` is rejected. Tax is excluded and is not calculated
+- A response after the validity date expires an unanswered sent or approved revision and does not store a response. The validity date itself can still be accepted or rejected
 - States: draft, submitted for approval, approved, sent, accepted, rejected, expired, and cancelled. Only the listed transitions are allowed
 - A new revision from an approved, sent, rejected, or expired quotation. The previous revision, its lines, snapshot, terms, and totals stay
 - Approval by someone other than the revision's creator and latest submitter, including a super administrator
@@ -87,6 +88,7 @@ Done in this branch:
 
 Not done, and not claimed:
 
+- A scheduled job that expires quotations without an accept, reject, or manual expiry action
 - Email delivery of a quotation
 - A share-link password
 - Revising an accepted quotation. A change after acceptance is a new quotation

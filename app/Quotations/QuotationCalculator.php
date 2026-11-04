@@ -28,6 +28,11 @@ final class QuotationCalculator
     public const MONEY_SCALE = 2;
 
     /**
+     * Largest amount that fits quotation_revisions.subtotal and total, DECIMAL(18,2).
+     */
+    public const TOTAL_MAX = '9999999999999999.99';
+
+    /**
      * @param  array<array-key, mixed>  $lines
      * @return list<array{position: int, description: string, unit: string, quantity: string, unit_price: string, line_total: string}>
      */
@@ -78,6 +83,8 @@ final class QuotationCalculator
             ];
         }
 
+        $this->sum(array_column($normalized, 'line_total'));
+
         return $normalized;
     }
 
@@ -92,7 +99,16 @@ final class QuotationCalculator
             $total = $total->plus(Money::of($lineTotal));
         }
 
-        return $total->amount();
+        $amount = $total->amount();
+
+        if (Decimal::of($amount)->compare(Decimal::of(self::TOTAL_MAX)) > 0) {
+            throw new QuotationRuleException(
+                'lines',
+                'The quotation total is '.$amount.' BDT, which is above '.self::TOTAL_MAX.' BDT. Reduce the lines before saving.',
+            );
+        }
+
+        return $amount;
     }
 
     public function lineTotal(string $quantity, string $unitPrice): string

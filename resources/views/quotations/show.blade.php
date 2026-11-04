@@ -14,6 +14,16 @@
         </div>
     </div>
 
+    @if ($errors->any())
+        <div role="alert" class="mt-4 rounded border border-red-200 bg-white px-3 py-2 text-sm text-red-800">
+            <ul class="list-disc pl-5">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     @if ($shareUrl)
         <div class="mt-4 rounded border border-line bg-white p-3 text-sm" role="status">
             <p class="font-medium">Copy this link now. It is not stored and will not be shown again.</p>

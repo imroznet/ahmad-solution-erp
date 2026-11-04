@@ -8,6 +8,7 @@ use App\Models\QuotationRevision;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\Money;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -26,23 +27,35 @@ final class QuotationWriter
      */
     public function create(User $actor, array $input): Quotation
     {
-        return DB::transaction(function () use ($actor, $input): Quotation {
-            $party = $this->lock->activeCustomer($this->integer($input, 'party_id'));
-            $prepared = $this->prepare($party, $input);
-            $quotation = Quotation::query()->create([
-                'number' => $this->numbers->allocate(),
-                'party_id' => $party->getKey(),
-                'party_role' => 'customer',
-                'status' => QuotationStatus::DRAFT,
-                'created_by' => $actor->getKey(),
-            ]);
-            $revision = $this->storeRevision($quotation, 1, $actor, $prepared);
-            $quotation->current_revision_id = $revision->getKey();
-            $quotation->save();
-            $this->audit->record('quotation_created', $quotation, newValues: $this->auditPayload($quotation, $revision), actor: $actor);
+        $attempt = 0;
 
-            return $quotation;
-        });
+        while (true) {
+            try {
+                return DB::transaction(function () use ($actor, $input): Quotation {
+                    $party = $this->lock->activeCustomer($this->integer($input, 'party_id'));
+                    $prepared = $this->prepare($party, $input);
+                    $quotation = Quotation::query()->create([
+                        'number' => $this->numbers->allocate(),
+                        'party_id' => $party->getKey(),
+                        'party_role' => 'customer',
+                        'status' => QuotationStatus::DRAFT,
+                        'created_by' => $actor->getKey(),
+                    ]);
+                    $revision = $this->storeRevision($quotation, 1, $actor, $prepared);
+                    $quotation->current_revision_id = $revision->getKey();
+                    $quotation->save();
+                    $this->audit->record('quotation_created', $quotation, newValues: $this->auditPayload($quotation, $revision), actor: $actor);
+
+                    return $quotation;
+                }, 5);
+            } catch (UniqueConstraintViolationException $exception) {
+                $attempt++;
+
+                if ($attempt >= 5 || ! str_contains($exception->getMessage(), 'quotations')) {
+                    throw $exception;
+                }
+            }
+        }
     }
 
     /**

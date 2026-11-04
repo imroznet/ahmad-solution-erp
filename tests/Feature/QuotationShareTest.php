@@ -9,12 +9,25 @@ use App\Models\User;
 use App\Quotations\QuotationPdfRenderer;
 use App\Quotations\QuotationStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class QuotationShareTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00', 'Asia/Dhaka'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
 
     public function test_share_links_store_a_hash_and_the_public_page_hides_internal_notes(): void
     {
@@ -162,6 +175,49 @@ class QuotationShareTest extends TestCase
         $this->assertSame(QuotationStatus::SENT, QuotationRevision::query()->where('revision_number', 1)->firstOrFail()->status);
     }
 
+    public function test_a_public_response_after_the_validity_date_expires_without_a_response_row(): void
+    {
+        $sales = $this->userWithRole('sales-executive');
+        $manager = $this->userWithRole('sales-manager');
+        $quotation = $this->advanceToSent($sales, $manager, $this->party(), [
+            'quotation_date' => '2026-11-01',
+            'valid_until' => '2026-11-10',
+        ]);
+        $token = $this->share($sales, $quotation, 14);
+        $payload = [
+            'decision' => 'rejected',
+            'respondent_name' => 'Nadia Rahman',
+            'confirmed' => '1',
+        ];
+
+        $this->actingAsGuest();
+        Carbon::setTestNow(Carbon::parse('2026-11-11 12:00:00', 'Asia/Dhaka'));
+        $expiresAt = DB::table('quotation_share_tokens')->value('expires_at');
+        $this->assertTrue(Carbon::parse((string) $expiresAt)->greaterThan(now()));
+
+        $posted = $this->post('/q/'.$token.'/respond', $payload);
+        $posted->assertSessionHasErrors('decision');
+        $cookie = $posted->getCookie((string) config('session.cookie'));
+        $this->assertNotNull($cookie);
+        $this->withCookie($cookie->getName(), $cookie->getValue())
+            ->get('/q/'.$token)
+            ->assertOk()
+            ->assertSee('past its validity date')
+            ->assertDontSee('I confirm this response');
+
+        $quotation->refresh();
+        $this->assertSame(QuotationStatus::EXPIRED, $quotation->status);
+        $this->assertNull($quotation->currentRevision?->expired_by);
+        $this->assertDatabaseCount('quotation_responses', 0);
+        $this->assertSame(1, DB::table('audit_logs')->where('event', 'quotation_expired')->count());
+        $this->assertNull(DB::table('audit_logs')->where('event', 'quotation_expired')->value('user_id'));
+
+        $this->post('/q/'.$token.'/respond', $payload)->assertSessionHasErrors('decision');
+        $this->assertDatabaseCount('quotation_responses', 0);
+        $this->assertSame(1, DB::table('audit_logs')->where('event', 'quotation_expired')->count());
+        $this->get('/q/'.$token)->assertOk();
+    }
+
     public function test_public_reads_are_rate_limited_without_logging_the_token(): void
     {
         config([
@@ -219,10 +275,10 @@ class QuotationShareTest extends TestCase
         $this->get('/quotations/'.$quotation->id.'/revisions/1/pdf')->assertRedirect(route('login'));
     }
 
-    private function share(User $sales, Quotation $quotation): string
+    private function share(User $sales, Quotation $quotation, int $days = 7): string
     {
         $this->actingAs($sales)->post(route('quotations.shares.store', $quotation), [
-            'days' => 7,
+            'days' => $days,
         ])->assertRedirect()->assertSessionHas('quotation_share_url');
 
         $url = session('quotation_share_url');
@@ -232,9 +288,12 @@ class QuotationShareTest extends TestCase
         return (string) preg_replace('#^.*/q/#', '', $url);
     }
 
-    private function advanceToSent(User $sales, User $manager, Party $customer): Quotation
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function advanceToSent(User $sales, User $manager, Party $customer, array $overrides = []): Quotation
     {
-        $this->actingAs($sales)->post('/quotations', [
+        $this->actingAs($sales)->post('/quotations', array_merge([
             'party_id' => $customer->id,
             'quotation_date' => '2026-11-01',
             'valid_until' => '2026-12-01',
@@ -247,7 +306,7 @@ class QuotationShareTest extends TestCase
                 'quantity' => '2',
                 'unit_price' => '1500.50',
             ]],
-        ])->assertRedirect();
+        ], $overrides))->assertRedirect();
 
         $quotation = Quotation::query()->orderByDesc('id')->firstOrFail();
         $this->actingAs($sales)->post(route('quotations.submit', $quotation))->assertRedirect();

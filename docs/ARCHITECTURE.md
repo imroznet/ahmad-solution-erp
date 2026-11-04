@@ -14,7 +14,9 @@ Guests can reach sign-in and password reset only. Every other page requires an a
 
 An administrator can create users and cannot grant or edit the super administrator role. A person cannot deactivate their own account from the user screen. `SuperAdministratorGuard` rejects a change that would leave the system without an active super administrator.
 
-Company permissions are `company.view`, `company.update`, `company.address.manage`, `company.documents.view`, `company.documents.create`, `company.documents.update`, `company.documents.delete`, `company.documents.download`, and `company.document_categories.manage`. On a database that already has roles, migration `2026_11_04_100002_grant_company_module_access` adds those default grants. It does not remove a grant that was taken away from an older permission. A later seed still leaves a customized role alone, except the super administrator, who always receives every permission.
+Company permissions are `company.view`, `company.update`, `company.address.manage`, `company.documents.view`, `company.documents.create`, `company.documents.update`, `company.documents.delete`, `company.documents.download`, and `company.document_categories.manage`. Party permissions are `parties.view`, `parties.create`, `parties.update`, `parties.archive`, `customers.view`, `customers.manage`, `suppliers.view`, `suppliers.manage`, `parties.contacts.manage`, and `parties.addresses.manage`. On a database that already has roles, migrations `2026_11_04_100002_grant_company_module_access` and `2026_11_05_100002_grant_party_module_access` add those default grants. They do not remove a grant that was taken away from an older permission. A later seed still leaves a customized role alone, except the super administrator, who always receives every permission.
+
+Sales roles receive customer access and do not receive supplier access. Accounts roles receive both. The document manager and the viewer receive neither. A route middleware checks that the user holds one of the relevant permissions. The controller then checks the individual party, so a customer permission does not open a supplier-only record.
 
 ## Money
 
@@ -24,7 +26,7 @@ Company permissions are `company.view`, `company.update`, `company.address.manag
 
 ## Audit
 
-`App\Services\AuditLogger` writes sign-in, sign-out, failed sign-in, lockout, inactive-account attempts, user changes, password resets, role-permission changes, company profile and address changes, document category changes, document creation, update, retirement, new file versions, and private downloads. The model refuses updates and deletes. The database user can still change the table directly; a trigger can be added later if the host permits it.
+`App\Services\AuditLogger` writes sign-in, sign-out, failed sign-in, lockout, inactive-account attempts, user changes, password resets, role-permission changes, company profile and address changes, document category changes, document creation, update, retirement, new file versions, private downloads, and party, role, contact, and address changes. The model refuses updates and deletes. The database user can still change the table directly; a trigger can be added later if the host permits it.
 
 ## Company profile
 
@@ -36,6 +38,14 @@ Expiry counts use the `expires_on` date in `Asia/Dhaka`. They are calculated whe
 
 TIN and BIN are stored as entered. The form does not check an NBR checksum, because that rule is not encoded here. The July–June dates offered on an empty profile are a suggestion, not a saved assumption.
 
+## Parties
+
+Customers and suppliers are roles on one `parties` row. The same organisation can hold both roles. Creating the second role does not copy the identity. TIN, BIN, and the VAT registration number are optional strings, so a missing identifier is valid and a leading zero is kept. The party currency is BDT.
+
+Contacts and addresses belong to the party. One active contact can be primary, one active address can be the billing default, and one active address can be the shipping default. Those limits are enforced inside a transaction after the party row is locked. There is no database partial unique index, because the SQLite test database and MySQL do not share one syntax for that rule. Closing or replacing an address keeps the old row and stores `supersedes_address_id` on the new row. Archiving a contact or a party keeps the row. An archived party cannot be edited until it is reactivated. There is no hard-delete screen, so a later quotation or invoice can use `parties.id` as a foreign key.
+
+A save that matches another party's name, TIN, BIN, phone, or email asks for confirmation. Confirming creates a separate record. It does not merge the two.
+
 ## Files
 
 - Private company documents and the company logo are stored on the `local` disk under `storage/app/private`. Downloads go through an authenticated controller, check a permission, and write an audit row. Nothing in that directory may be linked from `public/`.
@@ -46,4 +56,4 @@ The application timezone is `Asia/Dhaka`. The default currency is BDT. Display g
 
 ## What is deliberately absent
 
-Quotations, challans, invoices, Mushak forms, VDS, AIT, and journals are specified in the database plan and are not tables yet. There will be no product, stock, or warehouse tables.
+Quotations, challans, invoices, Mushak forms, VDS, AIT, and journals are specified in the database plan and are not tables yet. There will be no product, stock, or warehouse tables. Those future documents should reference `parties.id` and record whether the document used the customer role or the supplier role.

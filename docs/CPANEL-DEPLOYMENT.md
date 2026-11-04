@@ -22,12 +22,12 @@ GitHub Actions on this repository does all of the following:
 3. `composer audit`
 4. `npm ci` and `npm run build`
 5. `php artisan migrate` against a disposable MySQL 8.4 service
-6. A schema dump, the access-control SQL check, and the company-module SQL check
-7. The company upgrade script is imported into that MySQL database and must leave 20 document categories
+6. A schema dump, the access-control SQL check, the company-module SQL check, and the parties-module SQL check
+7. The company upgrade script is imported into that MySQL database and must leave 20 document categories. The parties upgrade script is imported twice on a database that has the foundation and company tables but not the party grants, and it must leave the party tables and the sales customer's permission without giving that role supplier access.
 8. `composer install --no-dev --optimize-autoloader`
 9. `scripts/build-deploy-package.sh`
 
-Download `ahmad-solution-erp-<git-sha>.zip` from the workflow artifacts. The zip contains `vendor`, `public/build`, `deploy/mysql-schema.sql`, `deploy/reference-data.sql`, `deploy/company-reference-data.sql`, and `deploy/upgrade-company-module.sql`. It does not contain `.env`.
+Download `ahmad-solution-erp-<git-sha>.zip` from the workflow artifacts. The zip contains `vendor`, `public/build`, `deploy/mysql-schema.sql`, `deploy/reference-data.sql`, `deploy/company-reference-data.sql`, `deploy/upgrade-company-module.sql`, and `deploy/upgrade-parties-module.sql`. It does not contain `.env`.
 
 ## Configure the environment
 
@@ -76,13 +76,15 @@ Until a CLI exists, import these files in phpMyAdmin in order for an empty datab
 
 Stop if an import reports an existing table or a duplicate key. Do not drop the staging database to force it.
 
-The schema dump includes the `migrations` rows so a later `artisan migrate` does not try to create the same tables again. `company-reference-data.sql` inserts the document categories only. It has no company profile and no certificates.
+The schema dump includes the `migrations` rows so a later `artisan migrate` does not try to create the same tables again. `company-reference-data.sql` inserts the document categories only. It has no company profile and no certificates. Party permissions are already in `reference-data.sql`. There is no separate party reference file because the module has no seeded business rows.
 
 ### Foundation database that is already imported
 
 If milestone 1 was imported and the company tables are not there, do not import `mysql-schema.sql` again. Import `deploy/upgrade-company-module.sql` once. It creates the company tables if they are missing, adds the company permissions and category rows, grants the new permissions without deleting current role grants, and records the two new migration names. Run the whole file in one phpMyAdmin session so the `sql_mode` change applies to the inserts.
 
-`artisan migrate --force` on a foundation database does the same work. The permission migration adds the new company grants and does not take older permissions away from a customized role.
+If the company module is already imported and the party tables are not there, import `deploy/upgrade-parties-module.sql` once. It creates `parties`, `party_roles`, `party_contacts`, and `party_addresses` if they are missing, adds the party permissions, grants the default role set without deleting current grants, and records the two party migration names. Importing it again does not duplicate those rows. Do not import `mysql-schema.sql` again.
+
+`artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role.
 
 ### First administrator
 

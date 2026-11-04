@@ -20,9 +20,7 @@ Done in this branch:
 
 Not done, and not claimed:
 
-- Company profile and addresses
-- Legal document storage
-- Customers, suppliers, quotations, challans, invoices
+- Quotations, challans, invoices
 - Mushak, VDS, AIT, and the general ledger
 - Email delivery beyond the Laravel mail configuration
 - Share links
@@ -52,10 +50,24 @@ Not done in this milestone:
 
 ## Milestone 3 — parties
 
-- Customers and suppliers
-- Multiple contacts and addresses
-- BIN and TIN fields
-- Authorization tests for sales and accounts roles
+Done in this branch:
+
+- One party record, with customer and supplier roles that can both be present
+- Multiple contacts, one active primary contact, and archived contacts kept
+- Multiple addresses, billing and shipping defaults, and address history
+- TIN, BIN, and VAT registration number stored as text, including a blank value
+- Duplicate warning without an automatic merge
+- Sales access to customers only, and accounts access to customers and suppliers
+- phpMyAdmin upgrade script for a database that already has the company module
+
+Not done in this milestone:
+
+- Quotations, challans, invoices, receivables, and payables
+- Opening balances or accounting ledgers
+- Email expiry reminders
+- Share links
+- A strict Content-Security-Policy
+- Deployment onto `stage.ahmad.bd`
 
 ## Milestone 4 — quotations
 

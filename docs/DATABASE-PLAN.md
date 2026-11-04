@@ -19,24 +19,27 @@ The staging database is `ahmadcom_asl_erp`. The host and password come from `.en
 | `document_categories` | System and custom categories. System rows are not deleted. |
 | `company_documents` | Document metadata. Retirement is a soft delete. |
 | `company_document_versions` | One stored file per version. Paths are random names on the private disk. |
+| `parties` | One organisation. TIN, BIN, and VAT registration number are strings. `currency_code` is BDT. `status` is active, inactive, or archived. |
+| `party_roles` | `customer` or `supplier`. Unique per party and role. A party may have both. |
+| `party_contacts` | Several contacts. One active primary contact is enforced in a transaction, not by a partial unique index. |
+| `party_addresses` | Registered, office, billing, shipping, project/site, branch, and other. Closed rows stay. `supersedes_address_id` links a replacement. |
 | `migrations` | Laravel migration ledger. |
 
 `permissions.permission_group` avoids the reserved word `group`.
 
 There is no `company_settings` table. The single profile holds the currency, financial year, and contact fields. Download history is an `audit_logs` row, not a separate access-log table.
 
+## Party design
+
+The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a later quotation, challan, invoice, receivable, payable, VDS or AIT record, and journal line. The document stores which role applied when it was issued. This milestone does not add those tables, opening balances, or payments.
+
+Archived parties and closed addresses are not soft-deleted. A soft delete would hide them from status filters and from a normal foreign key. There is no delete action. Division, district, and upazila are indexed text fields so a locality can be entered without a gazetteer table.
+
+Name search uses a bounded `LIKE` query and pagination. Exact TIN, BIN, email, phone, status, and district columns are indexed for the duplicate check and the filters.
+
 ## Planned tables
 
 These tables are not created yet.
-
-### Parties
-
-- `customers`
-- `suppliers`
-- `party_contacts`
-- `party_addresses`
-
-Customers and suppliers stay in separate tables. They are not one polymorphic party in the first version, because their tax and document obligations differ.
 
 ### Quotations
 

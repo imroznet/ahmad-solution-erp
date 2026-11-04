@@ -86,7 +86,8 @@ jobs:
           php artisan db:seed --force --no-interaction
           php artisan asl:export-access-sql
           php artisan asl:export-company-sql
-          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql
+          php artisan asl:export-parties-sql
+          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql
           cat > /tmp/mysql-client.cnf <<'EOF'
           [client]
           host=127.0.0.1
@@ -103,8 +104,34 @@ jobs:
             mysqldump --defaults-extra-file=/tmp/mysql-client.cnf --no-tablespaces --skip-lock-tables --no-create-info asl_erp migrations
           } > deploy/mysql-schema.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-company-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-parties-module.sql
           categories=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM document_categories" asl_erp)
           test "$categories" = "20"
+          party_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Parties'" asl_erp)
+          test "$party_permissions" = "10"
+          sales_suppliers=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='suppliers.view'" asl_erp)
+          test "$sales_suppliers" = "0"
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          for path in database/migrations/*.php; do
+            case "$(basename "$path")" in
+              *party*) continue ;;
+            esac
+            DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction --path="$path"
+          done
+          DB_DATABASE=asl_upgrade php artisan db:seed --force --no-interaction
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade <<'SQL'
+          DELETE FROM permission_role WHERE permission_id IN (SELECT id FROM (SELECT id FROM permissions WHERE permission_group = 'Parties') AS party_permissions);
+          DELETE FROM permissions WHERE permission_group = 'Parties';
+          SQL
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-parties-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-parties-module.sql
+          upgraded=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug='parties.view'" asl_upgrade)
+          test "$upgraded" = "1"
+          upgraded_sales=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='customers.view'" asl_upgrade)
+          test "$upgraded_sales" = "1"
+          upgraded_blocked=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='suppliers.view'" asl_upgrade)
+          test "$upgraded_blocked" = "0"
+          DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

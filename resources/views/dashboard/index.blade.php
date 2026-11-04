@@ -51,6 +51,26 @@
         </section>
     @endif
 
+    @if (is_array($partyCounts))
+        <section class="mt-8">
+            <h2 class="text-base font-semibold">Parties</h2>
+            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+                @if ($partyCounts['customers'] !== null)
+                    <div class="rounded border border-line bg-white px-4 py-3">
+                        <dt class="text-sm text-muted">Active customers</dt>
+                        <dd class="mt-1 text-2xl font-semibold"><a href="{{ $currentUser?->hasPermission('customers.view') ? route('customers.index') : route('parties.index', ['role' => 'customer']) }}">{{ $partyCounts['customers'] }}</a></dd>
+                    </div>
+                @endif
+                @if ($partyCounts['suppliers'] !== null)
+                    <div class="rounded border border-line bg-white px-4 py-3">
+                        <dt class="text-sm text-muted">Active suppliers</dt>
+                        <dd class="mt-1 text-2xl font-semibold"><a href="{{ $currentUser?->hasPermission('suppliers.view') ? route('suppliers.index') : route('parties.index', ['role' => 'supplier']) }}">{{ $partyCounts['suppliers'] }}</a></dd>
+                    </div>
+                @endif
+            </dl>
+        </section>
+    @endif
+
     <section class="mt-8">
         <h2 class="text-base font-semibold">Recent activity</h2>
         @if ($recentActivity->isEmpty())

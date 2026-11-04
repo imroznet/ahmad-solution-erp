@@ -34,6 +34,15 @@
                 @if ($currentUser?->hasPermission('company.documents.view'))
                     <a href="{{ route('company.documents.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('company.documents.*', 'company.categories.*'), 'hover:bg-white/10' => ! request()->routeIs('company.documents.*', 'company.categories.*')])>Documents</a>
                 @endif
+                @if ($currentUser?->hasPermission('customers.view'))
+                    <a href="{{ route('customers.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('customers.*') || (request()->routeIs('parties.*') && ! $currentUser?->hasPermission('parties.view') && ! $currentUser?->hasPermission('suppliers.view')), 'hover:bg-white/10' => ! (request()->routeIs('customers.*') || (request()->routeIs('parties.*') && ! $currentUser?->hasPermission('parties.view') && ! $currentUser?->hasPermission('suppliers.view')))])>Customers</a>
+                @endif
+                @if ($currentUser?->hasPermission('suppliers.view'))
+                    <a href="{{ route('suppliers.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('suppliers.*'), 'hover:bg-white/10' => ! request()->routeIs('suppliers.*')])>Suppliers</a>
+                @endif
+                @if ($currentUser?->hasPermission('parties.view'))
+                    <a href="{{ route('parties.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('parties.*'), 'hover:bg-white/10' => ! request()->routeIs('parties.*')])>All parties</a>
+                @endif
                 @if ($currentUser?->hasPermission('users.view'))
                     <a href="{{ route('users.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('users.*'), 'hover:bg-white/10' => ! request()->routeIs('users.*')])>Users</a>
                 @endif

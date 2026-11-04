@@ -10,16 +10,25 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureUserHasPermission
 {
     /**
+     * One slug is required. Extra slugs are alternatives: any one of them allows the request.
+     * Record-level checks still belong in the controller.
+     *
      * @param  Closure(Request): Response  $next
      */
-    public function handle(Request $request, Closure $next, string $permission): Response
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
         $user = $request->user();
 
-        if (! $user instanceof User || ! $user->hasPermission($permission)) {
+        if (! $user instanceof User || $permissions === []) {
             abort(403);
         }
 
-        return $next($request);
+        foreach ($permissions as $permission) {
+            if ($user->hasPermission($permission)) {
+                return $next($request);
+            }
+        }
+
+        abort(403);
     }
 }

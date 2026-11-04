@@ -7,6 +7,7 @@ This file replaces the Laravel skeleton's Boost bootstrap. Laravel Boost is not 
 - Build an internal modular monolith for Ahmad Solution Ltd.
 - Do not modify the legacy CMS repository.
 - Do not add a product catalogue, inventory, stock, warehouse, or procurement module.
+- Customers and suppliers share one party record. Add the other role to that record instead of creating a second organisation.
 - Quotation lines are typed by hand.
 - A quotation is not an invoice. A delivery challan is not a tax invoice. A commercial invoice and Mushak 6.3 are different documents.
 - Do not claim that a tax form is NBR-compliant until the current prescribed layout has been checked and the uncertainty is written down.

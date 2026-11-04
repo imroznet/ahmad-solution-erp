@@ -60,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
             'audit.index',
             'system.status',
             'company.*',
+            'parties.*',
+            'parties.contacts.*',
+            'parties.addresses.*',
         ], function ($view): void {
             $user = auth()->user();
 

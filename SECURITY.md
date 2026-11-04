@@ -14,6 +14,7 @@ Report a vulnerability privately to the system owner at Ahmad Solution Ltd. Do n
 - Audit rows are append-only in the application. Password fields are redacted before they are written.
 - Share tokens are not implemented yet. When they are, store only a hash, set an expiry, and allow revocation.
 - Private documents and the company logo are stored under `storage/app/private`. A download checks `company.documents.download` or `company.view` for the logo, and the download is written to the audit log. The stored name is random. Direct URLs under `public/` are not used.
+- Customer and supplier records require a signed-in user and a matching permission. A sales role can open customers and cannot open a supplier-only record by changing the URL. Contact and address actions are limited to the party in the URL.
 - `/health` and `/up` return a fixed status and start no session.
 - Responses send `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy`. HSTS is added only on HTTPS responses.
 - Debug output is compiled off unless the environment is `local` or `testing`.

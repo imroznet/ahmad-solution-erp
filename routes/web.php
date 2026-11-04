@@ -10,6 +10,9 @@ use App\Http\Controllers\CompanyDocumentDownloadController;
 use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentCategoryController;
+use App\Http\Controllers\PartyAddressController;
+use App\Http\Controllers\PartyContactController;
+use App\Http\Controllers\PartyController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
 use App\Http\Controllers\UserController;
@@ -139,4 +142,78 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/company/documents/{document}/versions/{version}/download', CompanyDocumentDownloadController::class)
         ->middleware('permission:company.documents.download')
         ->name('company.documents.download');
+
+    Route::get('/customers', [PartyController::class, 'customers'])
+        ->middleware('permission:customers.view')
+        ->name('customers.index');
+    Route::get('/customers/create', [PartyController::class, 'createCustomer'])
+        ->middleware('permission:customers.manage')
+        ->name('customers.create');
+    Route::post('/customers', [PartyController::class, 'store'])
+        ->middleware('permission:customers.manage')
+        ->name('customers.store');
+
+    Route::get('/suppliers', [PartyController::class, 'suppliers'])
+        ->middleware('permission:suppliers.view')
+        ->name('suppliers.index');
+    Route::get('/suppliers/create', [PartyController::class, 'createSupplier'])
+        ->middleware('permission:suppliers.manage')
+        ->name('suppliers.create');
+    Route::post('/suppliers', [PartyController::class, 'store'])
+        ->middleware('permission:suppliers.manage')
+        ->name('suppliers.store');
+
+    Route::get('/parties', [PartyController::class, 'index'])
+        ->middleware('permission:parties.view')
+        ->name('parties.index');
+    Route::get('/parties/create', [PartyController::class, 'create'])
+        ->middleware('permission:parties.create')
+        ->name('parties.create');
+    Route::post('/parties', [PartyController::class, 'store'])
+        ->middleware('permission:parties.create')
+        ->name('parties.store');
+    Route::get('/parties/{party}', [PartyController::class, 'show'])
+        ->middleware('permission:parties.view,customers.view,suppliers.view')
+        ->name('parties.show');
+    Route::get('/parties/{party}/edit', [PartyController::class, 'edit'])
+        ->middleware('permission:parties.update,customers.manage,suppliers.manage')
+        ->name('parties.edit');
+    Route::put('/parties/{party}', [PartyController::class, 'update'])
+        ->middleware('permission:parties.update,customers.manage,suppliers.manage')
+        ->name('parties.update');
+    Route::post('/parties/{party}/archive', [PartyController::class, 'archive'])
+        ->middleware('permission:parties.archive')
+        ->name('parties.archive');
+
+    Route::get('/parties/{party}/contacts/create', [PartyContactController::class, 'create'])
+        ->middleware('permission:parties.contacts.manage')
+        ->name('parties.contacts.create');
+    Route::post('/parties/{party}/contacts', [PartyContactController::class, 'store'])
+        ->middleware('permission:parties.contacts.manage')
+        ->name('parties.contacts.store');
+    Route::get('/parties/{party}/contacts/{contact}/edit', [PartyContactController::class, 'edit'])
+        ->middleware('permission:parties.contacts.manage')
+        ->name('parties.contacts.edit');
+    Route::put('/parties/{party}/contacts/{contact}', [PartyContactController::class, 'update'])
+        ->middleware('permission:parties.contacts.manage')
+        ->name('parties.contacts.update');
+    Route::post('/parties/{party}/contacts/{contact}/archive', [PartyContactController::class, 'archive'])
+        ->middleware('permission:parties.contacts.manage')
+        ->name('parties.contacts.archive');
+
+    Route::get('/parties/{party}/addresses/create', [PartyAddressController::class, 'create'])
+        ->middleware('permission:parties.addresses.manage')
+        ->name('parties.addresses.create');
+    Route::post('/parties/{party}/addresses', [PartyAddressController::class, 'store'])
+        ->middleware('permission:parties.addresses.manage')
+        ->name('parties.addresses.store');
+    Route::get('/parties/{party}/addresses/{address}/edit', [PartyAddressController::class, 'edit'])
+        ->middleware('permission:parties.addresses.manage')
+        ->name('parties.addresses.edit');
+    Route::put('/parties/{party}/addresses/{address}', [PartyAddressController::class, 'update'])
+        ->middleware('permission:parties.addresses.manage')
+        ->name('parties.addresses.update');
+    Route::post('/parties/{party}/addresses/{address}/close', [PartyAddressController::class, 'close'])
+        ->middleware('permission:parties.addresses.manage')
+        ->name('parties.addresses.close');
 });

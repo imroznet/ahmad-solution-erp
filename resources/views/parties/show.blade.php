@@ -13,9 +13,14 @@
                 <span class="rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">{{ $party->kindLabel() }}</span>
             </div>
         </div>
-        @if ($canUpdate)
-            <a href="{{ route('parties.edit', $party) }}" class="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark">Edit</a>
-        @endif
+        <div class="flex flex-wrap gap-2">
+            @if (in_array('customer', $visibleRoles, true) && $currentUser?->hasPermission('quotations.view'))
+                <a href="{{ route('quotations.index', ['party' => $party->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Quotations</a>
+            @endif
+            @if ($canUpdate)
+                <a href="{{ route('parties.edit', $party) }}" class="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark">Edit</a>
+            @endif
+        </div>
     </div>
 
     <dl class="mt-6 grid gap-4 rounded border border-line bg-white p-4 text-sm sm:grid-cols-2">

@@ -17,6 +17,8 @@ class AuditLogger
         'password_confirmation',
         'current_password',
         'token',
+        'token_hash',
+        'share_token',
         'remember_token',
         'secret',
         'api_key',
@@ -46,7 +48,7 @@ class AuditLogger
             'new_values' => $this->emptyAsNull($this->redact($newValues)),
             'ip_address' => $request->ip(),
             'user_agent' => $this->limited($request->userAgent()),
-            'url' => $this->limited($request->fullUrl(), 2048),
+            'url' => $this->limited($this->redactUrl($request->fullUrl()), 2048),
         ]);
     }
 
@@ -77,7 +79,19 @@ class AuditLogger
 
         return in_array($normalized, self::SENSITIVE_KEYS, true)
             || str_contains($normalized, 'password')
-            || str_contains($normalized, 'secret');
+            || str_contains($normalized, 'secret')
+            || str_contains($normalized, 'token');
+    }
+
+    /**
+     * Share links carry a bearer token in the path. The audit row keeps the
+     * route and drops the secret.
+     */
+    private function redactUrl(string $url): string
+    {
+        $redacted = preg_replace('~(/q/)[^/?#\s]+~', '$1[redacted]', $url) ?? $url;
+
+        return preg_replace('/([?&](?:token|share_token)=)[^&#\s]+/i', '$1[redacted]', $redacted) ?? $redacted;
     }
 
     /**

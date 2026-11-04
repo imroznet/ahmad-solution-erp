@@ -71,9 +71,31 @@ Not done in this milestone:
 
 ## Milestone 4 — quotations
 
-- Manual lines only
-- Numbering, revisions that preserve prior versions, approval, acceptance, PDF, and a hashed share link
-- No product lookup
+Done in this branch:
+
+- Draft quotations for an active BDT customer, with the customer role stored on the quotation
+- A customer, contact, and address snapshot on each revision, so a later party edit does not rewrite that revision
+- Hand-typed lines: description, unit, quantity, and unit price. No product catalogue
+- `QT-{Asia/Dhaka year}-{sequence}` numbers allocated under a row lock, with a unique number index
+- Quantity at 4 decimal places and money at 2. Extra digits are rejected. A line total rounds half away from zero, and the quotation total sums those rounded lines. Tax is excluded and is not calculated
+- States: draft, submitted for approval, approved, sent, accepted, rejected, expired, and cancelled. Only the listed transitions are allowed
+- A new revision from an approved, sent, rejected, or expired quotation. The previous revision, its lines, snapshot, terms, and totals stay
+- Approval by someone other than the revision's creator and latest submitter, including a super administrator
+- An explicit send record. Email is not sent
+- A share link whose raw token is shown once. The database stores the SHA-256 hash, an expiry, and revocation. The public page can record one acceptance or rejection for the current sent revision
+- A PDF of the revision being viewed, rendered when requested and not stored under `public/`
+
+Not done, and not claimed:
+
+- Email delivery of a quotation
+- A share-link password
+- Revising an accepted quotation. A change after acceptance is a new quotation
+- Accepting a superseded revision
+- NBR compliance, a VAT rate, Mushak, VDS, or AIT
+- Challans, commercial invoices, receivables, payables, and journal posting
+- A product, stock, warehouse, or procurement module
+- A strict Content-Security-Policy
+- Deployment onto `stage.ahmad.bd`
 
 ## Milestone 5 — challan and commercial invoice
 

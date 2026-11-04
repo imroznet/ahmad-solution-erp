@@ -23,6 +23,15 @@ The staging database is `ahmadcom_asl_erp`. The host and password come from `.en
 | `party_roles` | `customer` or `supplier`. Unique per party and role. A party may have both. |
 | `party_contacts` | Several contacts. One active primary contact is enforced in a transaction, not by a partial unique index. |
 | `party_addresses` | Registered, office, billing, shipping, project/site, branch, and other. Closed rows stay. `supersedes_address_id` links a replacement. |
+| `quotation_number_sequences` | One locked counter per Asia/Dhaka calendar year. |
+| `quotations` | Header: number, customer party, role used at creation, current revision, and status. |
+| `quotation_revisions` | Immutable commercial snapshot after the revision leaves draft. Totals are `DECIMAL(18,2)`. |
+| `quotation_lines` | Hand-typed description, unit, quantity `DECIMAL(16,4)`, unit price `DECIMAL(16,2)`, and rounded line total. No product key. |
+| `quotation_approvals` | Submit, approve, and return events for one revision. |
+| `quotation_sends` | The send event. `delivery_status` is `email_not_configured` until mail exists. |
+| `quotation_share_tokens` | SHA-256 of the share token, expiry, and revocation. The raw token is not stored. |
+| `quotation_share_access_logs` | View, PDF, expiry, revocation, and rate-limit events. The raw token is not stored. |
+| `quotation_responses` | One acceptance or rejection per revision. |
 | `migrations` | Laravel migration ledger. |
 
 `permissions.permission_group` avoids the reserved word `group`.
@@ -31,25 +40,29 @@ There is no `company_settings` table. The single profile holds the currency, fin
 
 ## Party design
 
-The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a later quotation, challan, invoice, receivable, payable, VDS or AIT record, and journal line. The document stores which role applied when it was issued. This milestone does not add those tables, opening balances, or payments.
+The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation, and later for a challan, invoice, receivable, payable, VDS or AIT record, and journal line. The document stores which role applied when it was issued. Opening balances and payments are not in this schema.
 
 Archived parties and closed addresses are not soft-deleted. A soft delete would hide them from status filters and from a normal foreign key. There is no delete action. Division, district, and upazila are indexed text fields so a locality can be entered without a gazetteer table.
 
 Name search uses a bounded `LIKE` query and pagination. Exact TIN, BIN, email, phone, status, and district columns are indexed for the duplicate check and the filters.
 
+## Quotation design
+
+A quotation points at `parties.id` and stores `party_role` as `customer`. Each revision copies the legal name, tax identifiers, contact, and billing and shipping address text. Later edits to the party do not change that revision.
+
+`current_revision_id` is an indexed column without a foreign key, so the header and its first revision can be inserted without a circular constraint. The application sets it in the same transaction.
+
+Draft lines may be replaced while the revision is still a draft. After it is submitted, the revision model rejects content changes. A new revision is a new row. Issued lines, revisions, approvals, sends, responses, and the quotation itself cannot be deleted through the application.
+
+Quantity is stored at 4 decimal places and must be greater than zero, up to `9999999.9999`. Unit price is stored at 2 decimal places, from `0.00` to `99999999.99`. A value with extra fractional digits is rejected. The line total is quantity times unit price, then rounded to 2 decimal places with a tie away from zero. The revision total is the sum of those line totals. `tax_treatment` is `excluded`. The tax notice is copied onto the revision from configuration. No VAT amount is stored.
+
+The number is `QT-` plus the Asia/Dhaka calendar year plus a sequence of at least 4 digits. `quotation_number_sequences.year` is locked with `FOR UPDATE` inside the create transaction. The unique index on `quotations.number` is the second guard.
+
+Share rows store `hash('sha256', raw token)`. There is no password hash on a quotation link. A generic password-protected share for other documents is still planned.
+
 ## Planned tables
 
 These tables are not created yet.
-
-### Quotations
-
-- `quotations`
-- `quotation_items`
-- `quotation_revisions`
-- `quotation_approvals`
-- `quotation_acceptances`
-
-A revision inserts a new version. It does not update the issued rows of the previous version. Line items are free text. There is no product foreign key.
 
 ### Delivery and commercial invoice
 
@@ -86,12 +99,12 @@ Mushak 6.3, 6.4, 6.5, 6.6, and 6.2 are different documents. The application will
 
 A posted journal's debit total must equal its credit total inside a database transaction. The posted row is then immutable. There is no automatic posting until a mapping has been written and tested.
 
-### Sharing
+### Sharing for later documents
 
-- `document_share_tokens` stores a hash, expiry, optional password hash, and revocation time
-- `document_share_access_logs`
+- `document_share_tokens` would store a hash, expiry, optional password hash, and revocation time for documents other than quotations
+- `document_share_access_logs` for those documents
 
-The raw token is shown once and is never stored.
+Quotation shares already use `quotation_share_tokens` and `quotation_share_access_logs`. The raw token is shown once and is never stored. A quotation link does not have a password.
 
 ## Explicitly excluded
 

@@ -1,6 +1,6 @@
 # Ahmad Solution Ltd. Business Management System
 
-Internal business management system for Ahmad Solution Ltd., Bangladesh. This release has the application foundation, the company profile, and customer and supplier records. A customer and a supplier can be the same organisation. Quotations, tax documents, and accounting are planned and are not implemented yet.
+Internal business management system for Ahmad Solution Ltd., Bangladesh. This release has the application foundation, the company profile, customer and supplier records, and quotations. A customer and a supplier can be the same organisation. A quotation is a priced offer with hand-typed lines. It is not an invoice, a delivery challan, or a tax form. Tax documents and accounting are planned and are not implemented yet.
 
 This application is separate from the legacy public website. Do not migrate or modify that site as part of this project.
 

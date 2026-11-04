@@ -27,6 +27,25 @@ return [
         'logo_mimes' => ['image/jpeg', 'image/png'],
     ],
 
+    /*
+    | Quotation arithmetic and share-link limits. Tax is not calculated.
+    | Quantity allows 4 decimal places. Money stays at poisha (2 decimal places).
+    */
+    'quotations' => [
+        'number_prefix' => 'QT',
+        'quantity_scale' => 4,
+        'max_quantity' => '9999999.9999',
+        'max_unit_price' => '99999999.99',
+        'max_lines' => 50,
+        'share_default_days' => 14,
+        'share_max_days' => 90,
+        'read_per_minute' => 30,
+        'read_ip_per_minute' => 60,
+        'respond_per_hour' => 5,
+        'respond_ip_per_minute' => 10,
+        'tax_notice' => 'Tax is excluded from the amounts on this quotation. Tax is subject to confirmation and is not calculated here. This document is not a tax invoice, a Mushak form, or a delivery challan.',
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

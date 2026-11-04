@@ -87,7 +87,8 @@ jobs:
           php artisan asl:export-access-sql
           php artisan asl:export-company-sql
           php artisan asl:export-parties-sql
-          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql
+          php artisan asl:export-quotations-sql
+          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql
           cat > /tmp/mysql-client.cnf <<'EOF'
           [client]
           host=127.0.0.1
@@ -105,16 +106,20 @@ jobs:
           } > deploy/mysql-schema.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-company-module.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-parties-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-quotations-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-quotations-module.sql
           categories=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM document_categories" asl_erp)
           test "$categories" = "20"
           party_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Parties'" asl_erp)
           test "$party_permissions" = "10"
           sales_suppliers=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='suppliers.view'" asl_erp)
           test "$sales_suppliers" = "0"
+          quotation_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Quotations'" asl_erp)
+          test "$quotation_permissions" = "9"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in
-              *party*) continue ;;
+              *party*|*quotation*) continue ;;
             esac
             DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction --path="$path"
           done
@@ -131,7 +136,25 @@ jobs:
           test "$upgraded_sales" = "1"
           upgraded_blocked=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='suppliers.view'" asl_upgrade)
           test "$upgraded_blocked" = "0"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade <<'SQL'
+          DELETE FROM permission_role WHERE permission_id IN (SELECT id FROM (SELECT id FROM permissions WHERE permission_group = 'Quotations') AS quotation_permissions);
+          DELETE FROM permissions WHERE permission_group = 'Quotations';
+          SQL
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-quotations-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-quotations-module.sql
+          upgraded_quotations=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug='quotations.view'" asl_upgrade)
+          test "$upgraded_quotations" = "1"
+          upgraded_quotation_group=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Quotations'" asl_upgrade)
+          test "$upgraded_quotation_group" = "9"
+          upgraded_sales_quotes=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='quotations.view'" asl_upgrade)
+          test "$upgraded_sales_quotes" = "1"
+          upgraded_sales_approve=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='quotations.approve'" asl_upgrade)
+          test "$upgraded_sales_approve" = "0"
+          upgraded_documents=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='document-manager' AND p.slug='quotations.view'" asl_upgrade)
+          test "$upgraded_documents" = "0"
           DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          DB_DATABASE=asl_quotation_lock php scripts/check-quotation-number-lock.php
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

@@ -34,6 +34,12 @@
                 @if ($currentUser?->hasPermission('company.documents.view'))
                     <a href="{{ route('company.documents.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('company.documents.*', 'company.categories.*'), 'hover:bg-white/10' => ! request()->routeIs('company.documents.*', 'company.categories.*')])>Documents</a>
                 @endif
+                @if ($currentUser?->hasPermission('quotations.view'))
+                    <a href="{{ route('quotations.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('quotations.*') && ! request()->routeIs('quotations.approvals'), 'hover:bg-white/10' => ! (request()->routeIs('quotations.*') && ! request()->routeIs('quotations.approvals'))])>Quotations</a>
+                @endif
+                @if ($currentUser?->hasPermission('quotations.approve'))
+                    <a href="{{ route('quotations.approvals') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('quotations.approvals'), 'hover:bg-white/10' => ! request()->routeIs('quotations.approvals')])>Approvals</a>
+                @endif
                 @if ($currentUser?->hasPermission('customers.view'))
                     <a href="{{ route('customers.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('customers.*') || (request()->routeIs('parties.*') && ! $currentUser?->hasPermission('parties.view') && ! $currentUser?->hasPermission('suppliers.view')), 'hover:bg-white/10' => ! (request()->routeIs('customers.*') || (request()->routeIs('parties.*') && ! $currentUser?->hasPermission('parties.view') && ! $currentUser?->hasPermission('suppliers.view')))])>Customers</a>
                 @endif

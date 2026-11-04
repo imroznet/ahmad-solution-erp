@@ -36,9 +36,10 @@ Run the test suite, Pint, and PHPStan. Review new migrations, authorization, and
 
 ## Cursor Cloud specific instructions
 
-- The Cloud Agent image starts without PHP. The environment install adds PHP 8.4 from the ondrej PHP PPA, Composer, and MySQL 8, then runs `composer install`, `npm ci`, and `npm run build`. Node 22 is already on the image.
-- `.env.example` names the staging database. The environment points `.env` at local MySQL instead: database `asl_erp`, user `asl`, password `secret` (the same values as GitHub Actions), host `127.0.0.1`, port `3306`. The app is served at `http://127.0.0.1:8000`.
-- On boot, MySQL is started, the `asl_erp` database is created if needed, and `php artisan migrate --force` plus `php artisan db:seed --force` run before `php artisan serve`.
+- Reviewed install and boot scripts are `scripts/cloud-agent-install.sh` and `scripts/cloud-agent-start.sh`. Both are safe to run again.
+- The image starts without PHP. Install adds PHP 8.4 from the ondrej PHP PPA, Composer, and MySQL 8.4 LTS from the MySQL community repository (`mysql-community-server`). Ubuntu 24.04's own `mysql-server` package is 8.0, which does not match GitHub Actions. Actions uses the `mysql:8.4` image; the agent installs the 8.4 series (the patch, such as 8.4.13, follows the community repository). Node 22 is already on the image.
+- MySQL listens on `127.0.0.1` only. `.env.example` still names the staging database. The install script points `.env` at local MySQL: database `asl_erp`, user `asl`, password `secret` (the same values committed in GitHub Actions), host `127.0.0.1`, port `3306`. That password is a local and CI fixture, not a production secret. The app is served at `http://127.0.0.1:8000`.
+- On boot, MySQL 8.4 is started, the database is created if needed, and `php artisan migrate --force` plus `php artisan db:seed --force` run before `php artisan serve`.
+- If `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are set, boot creates that administrator only when the email is absent. The lookup uses an Eloquent query with a bound email. Boot then unsets `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` before the Laravel server starts. Do not write that password into `.env`.
 - `php artisan test` uses SQLite in memory and does not need MySQL. Style check: `vendor/bin/pint --test`. Static analysis: `vendor/bin/phpstan analyse --memory-limit=1G`.
-- Create a local administrator in the shell only. Set `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` (at least 12 characters, with mixed case and a number), run `php artisan asl:create-admin --no-interaction`, then unset `ADMIN_PASSWORD`. Do not write that password into `.env`. If those three variables are present at boot and the email is new, the boot script creates the account.
 - `GET /health` and `GET /up` do not read the database. A response of `Service is available.` is the healthy body.

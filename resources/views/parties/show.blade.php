@@ -17,6 +17,12 @@
             @if (in_array('customer', $visibleRoles, true) && $currentUser?->hasPermission('quotations.view'))
                 <a href="{{ route('quotations.index', ['party' => $party->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Quotations</a>
             @endif
+            @if (in_array('customer', $visibleRoles, true) && $currentUser?->hasPermission('challans.view'))
+                <a href="{{ route('challans.index', ['party' => $party->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Challans</a>
+            @endif
+            @if (in_array('customer', $visibleRoles, true) && $currentUser?->hasPermission('invoices.view'))
+                <a href="{{ route('invoices.index', ['party' => $party->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Invoices</a>
+            @endif
             @if ($canUpdate)
                 <a href="{{ route('parties.edit', $party) }}" class="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark">Edit</a>
             @endif

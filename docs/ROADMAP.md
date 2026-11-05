@@ -94,16 +94,35 @@ Not done, and not claimed:
 - Revising an accepted quotation. A change after acceptance is a new quotation
 - Accepting a superseded revision
 - NBR compliance, a VAT rate, Mushak, VDS, or AIT
-- Challans, commercial invoices, receivables, payables, and journal posting
+- Receivables, payables, and journal posting
 - A product, stock, warehouse, or procurement module
 - A strict Content-Security-Policy
 - Deployment onto `stage.ahmad.bd`
 
 ## Milestone 5 — challan and commercial invoice
 
-- Challan from an accepted quotation
-- Commercial invoice linked to the quotation and challan
-- Issued documents frozen, with an audited adjustment path
+Done in this branch:
+
+- A delivery challan from an accepted quotation and its accepted revision, with the customer and line text copied onto the challan
+- Partial deliveries and more than one challan for one quotation. Typed quantities only. Issued quantities cannot pass the accepted quantity. A draft does not reserve that quantity
+- Separate issue, dispatch, and acknowledgment. A PDF does not record dispatch or receipt
+- A commercial invoice against that quotation and one or more issued challans. Each invoice line points at the challan line and the quotation line, so the delivered quantity can be traced
+- Staged invoicing. Issued quantities cannot pass the delivered quantity, and issued amounts stay within the accepted line and quotation totals, including the remainder left by earlier rounding
+- `DC-{Asia/Dhaka year}-{sequence}` and `CI-{year}-{sequence}` numbers allocated when the document is issued. A draft has no number. A failed issue does not consume the number
+- Issued content and the company snapshot stay as they were. A controlled void keeps the document. A challan used by a draft or issued invoice cannot be voided until those invoices are voided
+
+Not done, and not claimed:
+
+- Email of a challan or invoice
+- A share link for either document
+- Credit notes and debit notes. Void is the adjustment path in this release
+- Inventory, products, stock, warehouses, procurement, or stock movements
+- VAT, a VAT rate, Mushak, VDS, AIT, receivables, payables, receipts, or journals
+- NBR compliance. Tax is excluded and is not calculated
+- Per-customer assignment beyond the quotation visibility check. Sales can see every customer document
+- Adding a vehicle after issue. Acknowledgment does not require dispatch
+- A scheduled job that expires quotations
+- Deployment onto `stage.ahmad.bd`
 
 ## Milestone 6 — tax documents
 

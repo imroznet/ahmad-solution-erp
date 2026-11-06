@@ -37,6 +37,12 @@
                 @if ($currentUser?->hasPermission('quotations.view'))
                     <a href="{{ route('quotations.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('quotations.*') && ! request()->routeIs('quotations.approvals'), 'hover:bg-white/10' => ! (request()->routeIs('quotations.*') && ! request()->routeIs('quotations.approvals'))])>Quotations</a>
                 @endif
+                @if ($currentUser?->hasPermission('challans.view'))
+                    <a href="{{ route('challans.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('challans.*'), 'hover:bg-white/10' => ! request()->routeIs('challans.*')])>Challans</a>
+                @endif
+                @if ($currentUser?->hasPermission('invoices.view'))
+                    <a href="{{ route('invoices.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('invoices.*'), 'hover:bg-white/10' => ! request()->routeIs('invoices.*')])>Invoices</a>
+                @endif
                 @if ($currentUser?->hasPermission('quotations.approve'))
                     <a href="{{ route('quotations.approvals') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('quotations.approvals'), 'hover:bg-white/10' => ! request()->routeIs('quotations.approvals')])>Approvals</a>
                 @endif

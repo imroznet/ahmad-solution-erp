@@ -6,6 +6,12 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('quotations.pdf', [$quotation, $revision->revision_number]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">PDF</a>
+            @if ($canCreateChallan ?? false)
+                <a href="{{ route('challans.create', ['quotation' => $quotation->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Delivery challan</a>
+            @endif
+            @if ($canCreateInvoice ?? false)
+                <a href="{{ route('invoices.create', ['quotation' => $quotation->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Commercial invoice</a>
+            @endif
             @if ($isCurrent && $canUpdate)
                 <a href="{{ route('quotations.edit', $quotation) }}" class="rounded bg-brand px-3 py-2 text-sm font-medium text-white">Edit draft</a>
             @elseif ($isCurrent && $canRevise)

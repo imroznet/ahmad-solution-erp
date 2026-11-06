@@ -4,12 +4,14 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\ChallanController;
 use App\Http\Controllers\CompanyAddressController;
 use App\Http\Controllers\CompanyDocumentController;
 use App\Http\Controllers\CompanyDocumentDownloadController;
 use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentCategoryController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
@@ -295,4 +297,66 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/quotations/{quotation}/shares/{share}/revoke', [QuotationShareController::class, 'revoke'])
         ->middleware('permission:quotations.share')
         ->name('quotations.shares.revoke');
+
+    Route::get('/challans', [ChallanController::class, 'index'])
+        ->middleware('permission:challans.view')
+        ->name('challans.index');
+    Route::get('/challans/create', [ChallanController::class, 'create'])
+        ->middleware('permission:challans.create')
+        ->name('challans.create');
+    Route::post('/challans', [ChallanController::class, 'store'])
+        ->middleware('permission:challans.create')
+        ->name('challans.store');
+    Route::get('/challans/{challan}', [ChallanController::class, 'show'])
+        ->middleware('permission:challans.view')
+        ->name('challans.show');
+    Route::get('/challans/{challan}/edit', [ChallanController::class, 'edit'])
+        ->middleware('permission:challans.update')
+        ->name('challans.edit');
+    Route::put('/challans/{challan}', [ChallanController::class, 'update'])
+        ->middleware('permission:challans.update')
+        ->name('challans.update');
+    Route::post('/challans/{challan}/issue', [ChallanController::class, 'issue'])
+        ->middleware('permission:challans.issue')
+        ->name('challans.issue');
+    Route::post('/challans/{challan}/dispatch', [ChallanController::class, 'dispatch'])
+        ->middleware('permission:challans.dispatch')
+        ->name('challans.dispatch');
+    Route::post('/challans/{challan}/acknowledge', [ChallanController::class, 'acknowledge'])
+        ->middleware('permission:challans.acknowledge')
+        ->name('challans.acknowledge');
+    Route::post('/challans/{challan}/void', [ChallanController::class, 'void'])
+        ->middleware('permission:challans.void')
+        ->name('challans.void');
+    Route::get('/challans/{challan}/pdf', [ChallanController::class, 'pdf'])
+        ->middleware('permission:challans.pdf')
+        ->name('challans.pdf');
+
+    Route::get('/invoices', [InvoiceController::class, 'index'])
+        ->middleware('permission:invoices.view')
+        ->name('invoices.index');
+    Route::get('/invoices/create', [InvoiceController::class, 'create'])
+        ->middleware('permission:invoices.create')
+        ->name('invoices.create');
+    Route::post('/invoices', [InvoiceController::class, 'store'])
+        ->middleware('permission:invoices.create')
+        ->name('invoices.store');
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])
+        ->middleware('permission:invoices.view')
+        ->name('invoices.show');
+    Route::get('/invoices/{invoice}/edit', [InvoiceController::class, 'edit'])
+        ->middleware('permission:invoices.update')
+        ->name('invoices.edit');
+    Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])
+        ->middleware('permission:invoices.update')
+        ->name('invoices.update');
+    Route::post('/invoices/{invoice}/issue', [InvoiceController::class, 'issue'])
+        ->middleware('permission:invoices.issue')
+        ->name('invoices.issue');
+    Route::post('/invoices/{invoice}/void', [InvoiceController::class, 'void'])
+        ->middleware('permission:invoices.void')
+        ->name('invoices.void');
+    Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])
+        ->middleware('permission:invoices.pdf')
+        ->name('invoices.pdf');
 });

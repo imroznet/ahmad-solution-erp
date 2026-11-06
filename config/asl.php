@@ -46,6 +46,21 @@ return [
         'tax_notice' => 'Tax is excluded from the amounts on this quotation. Tax is subject to confirmation and is not calculated here. This document is not a tax invoice, a Mushak form, or a delivery challan.',
     ],
 
+    /*
+    | Delivery challans and commercial invoices. Numbers are assigned when the
+    | document is issued, not when the draft is saved. Tax is not calculated.
+    | A challan is not an invoice. A commercial invoice is not a Mushak form.
+    */
+    'delivery_challans' => [
+        'number_prefix' => 'DC',
+        'notice' => 'This delivery challan is not a commercial invoice, a tax invoice, or a Mushak form. Generating this PDF does not record dispatch or receipt.',
+    ],
+
+    'commercial_invoices' => [
+        'number_prefix' => 'CI',
+        'notice' => 'This is a commercial invoice. Tax is excluded and is not calculated. This document is not a tax invoice or a Mushak form.',
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

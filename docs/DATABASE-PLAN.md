@@ -32,6 +32,14 @@ The staging database is `ahmadcom_asl_erp`. The host and password come from `.en
 | `quotation_share_tokens` | SHA-256 of the share token, expiry, and revocation. The raw token is not stored. |
 | `quotation_share_access_logs` | View, PDF, expiry, revocation, and rate-limit events. The raw token is not stored. |
 | `quotation_responses` | One acceptance or rejection per revision. |
+| `delivery_challan_number_sequences` | One locked counter per Asia/Dhaka calendar year for delivery challans. |
+| `delivery_challans` | Header. Number is assigned at issue. Customer text is copied from the accepted revision. |
+| `delivery_challan_lines` | Typed delivered quantity for one quotation line. No product key. |
+| `delivery_challan_events` | Issue, dispatch, acknowledgment, and void. |
+| `commercial_invoice_number_sequences` | One locked counter per Asia/Dhaka calendar year for commercial invoices. |
+| `commercial_invoices` | Header. Totals are `DECIMAL(18,2)`. Tax is excluded. |
+| `commercial_invoice_lines` | One invoiced slice of a challan line, with the quotation line and the rounded amount. |
+| `commercial_invoice_events` | Issue and void. |
 | `migrations` | Laravel migration ledger. |
 
 `permissions.permission_group` avoids the reserved word `group`.
@@ -40,7 +48,7 @@ There is no `company_settings` table. The single profile holds the currency, fin
 
 ## Party design
 
-The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation, and later for a challan, invoice, receivable, payable, VDS or AIT record, and journal line. The document stores which role applied when it was issued. Opening balances and payments are not in this schema.
+The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. Receivables, payables, VDS, AIT, and journal lines are not in this schema yet. Opening balances and payments are not in this schema.
 
 Archived parties and closed addresses are not soft-deleted. A soft delete would hide them from status filters and from a normal foreign key. There is no delete action. Division, district, and upazila are indexed text fields so a locality can be entered without a gazetteer table.
 
@@ -62,20 +70,39 @@ A response after `valid_until`, compared as a date in Asia/Dhaka, does not inser
 
 Share rows store `hash('sha256', raw token)`. There is no password hash on a quotation link. A generic password-protected share for other documents is still planned.
 
+## Delivery challans and commercial invoices
+
+These tables are created by `2026_11_07_100001_create_delivery_document_tables`.
+
+| Table | Purpose |
+| --- | --- |
+| `delivery_challan_number_sequences` | One locked counter per Asia/Dhaka calendar year. The row is inserted with `INSERT IGNORE` before `FOR UPDATE`. |
+| `delivery_challans` | Header. `number` is null until issue. Customer text is copied from the accepted revision. `company_snapshot` is filled at issue. |
+| `delivery_challan_lines` | One row per quotation line on that challan, including rows superseded by a later draft edit. Quantity and the accepted quantity are `DECIMAL(16,4)`. `superseded_at` and `superseded_by` mark a replaced row. Current uniqueness uses stored generated columns that are null once a row is superseded: `(delivery_challan_id, active_position)` and `(delivery_challan_id, active_quotation_line_id)`. |
+| `delivery_challan_events` | Issue, dispatch, acknowledgment, and void. Dispatch and acknowledgment are events, not statuses. |
+| `commercial_invoice_number_sequences` | Separate year counter for commercial invoices. |
+| `commercial_invoices` | Header. `subtotal` and `total` are `DECIMAL(18,2)`. `tax_treatment` is `excluded`. |
+| `commercial_invoice_lines` | One row per challan line on that invoice, including rows superseded by a later draft edit. `delivery_challan_line_id` and `quotation_line_id` are both stored. Quantity is `DECIMAL(16,4)`, unit price `DECIMAL(16,2)`, and line total `DECIMAL(18,2)`. Current uniqueness uses `(commercial_invoice_id, active_position)` and `(commercial_invoice_id, active_challan_line_id)`. |
+| `commercial_invoice_events` | Issue and void. |
+
+Status is `draft`, `issued`, or `voided`. Only `issued` counts as delivered or invoiced, and only lines with `superseded_at` null are included. A voided document keeps its number and its rows. A draft edit keeps the previous line row. The application does not hard-delete these tables' rows. Foreign keys restrict deletes. `2026_11_07_100003_preserve_delivery_document_line_history` adds the history columns to tables created by the first version of this module.
+
+The lock order inside a transaction is the quotation, then the challans in ascending id, then the invoice, and the year sequence last and only during issue. A draft save checks the issued totals so the user sees the limit early. Issue checks them again. Two drafts may each be saved for the full remainder because a draft does not reserve quantity.
+
+An invoice line amount is the slice quantity times the accepted unit price, rounded half away from zero to two decimal places. The slice that finishes the accepted quantity stores the remaining accepted line amount. That keeps staged invoices equal to the accepted line total. The sum of issued invoice totals cannot pass the accepted quotation total or `9999999999999999.99`.
+
+A challan with a draft or issued invoice line pointing at it cannot be voided. Voiding an invoice does not void the challan. Credit notes and debit notes are not in this schema. Void is the adjustment path for this release.
+
 ## Planned tables
 
 These tables are not created yet.
 
-### Delivery and commercial invoice
+### Adjustments and tax
 
-- `delivery_challans`
-- `delivery_challan_items`
-- `commercial_invoices`
-- `commercial_invoice_items`
 - `credit_notes`
 - `debit_notes`
 
-A challan is not a tax invoice. An issued invoice is not edited in place. A quantity or amount change after issue requires a reason and a new adjustment document.
+A challan is not a tax invoice. A commercial invoice is not a Mushak form. An issued invoice is not edited in place. A later credit or debit note would be a new document. It is not built yet.
 
 ### Tax
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Documents\DocumentAuthorizer;
 use App\Http\Controllers\Concerns\AttemptsQuotation;
 use App\Http\Requests\SaveQuotationRequest;
 use App\Models\Party;
@@ -160,6 +161,8 @@ class QuotationController extends Controller
             'canRespond' => $this->authorizer->canRespond($user, $quotation),
             'canShare' => $this->authorizer->canShare($user, $quotation),
             'canRevokeShare' => $this->authorizer->canRevokeShare($user, $quotation),
+            'canCreateChallan' => app(DocumentAuthorizer::class)->canCreateChallan($user, $quotation),
+            'canCreateInvoice' => app(DocumentAuthorizer::class)->canCreateInvoice($user, $quotation),
             'shareDays' => (int) config('asl.quotations.share_default_days', 14),
             'shareMaxDays' => (int) config('asl.quotations.share_max_days', 90),
         ]);

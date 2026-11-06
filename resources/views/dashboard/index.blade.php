@@ -1,6 +1,6 @@
 <x-layouts.app title="Dashboard">
     <h1 class="text-xl font-semibold">Dashboard</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Operational counts below come from the database. Invoice, receivable, VAT, and expense figures are omitted until those modules are installed. No sample amounts are shown.</p>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Operational counts below come from the database. Receivable, payable, and expense figures are omitted until accounting is installed. VAT amounts are not summarized here, because a Mushak percentage is entered by a user and is not a statutory total. No sample amounts are shown.</p>
 
     <dl class="mt-6 grid gap-4 sm:grid-cols-3">
         <div class="rounded border border-line bg-white px-4 py-3">

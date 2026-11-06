@@ -126,6 +126,14 @@ class CommercialInvoice extends Model
     }
 
     /**
+     * @return HasMany<MushakInvoice, $this>
+     */
+    public function mushakInvoices(): HasMany
+    {
+        return $this->hasMany(MushakInvoice::class);
+    }
+
+    /**
      * @return HasMany<CommercialInvoiceEvent, $this>
      */
     public function events(): HasMany

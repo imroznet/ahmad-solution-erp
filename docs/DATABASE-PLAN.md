@@ -106,13 +106,19 @@ A challan is not a tax invoice. A commercial invoice is not a Mushak form. An is
 
 ### Tax
 
-- `tax_rules` with type, rate, start date, end date, supply type, legal reference, notes, and active flag
-- `mushak_documents`
-- `mushak_document_items`
-- `vds_certificates`
-- `ait_records`
+These tables are created by `2026_11_08_100001_create_tax_tables`.
 
-Mushak 6.3, 6.4, 6.5, 6.6, and 6.2 are different documents. The application will not use one generic form for all of them. VAT, VDS, and AIT stay in separate records. No rate is seeded as a statutory default until the current NBR rule is identified and dated.
+| Table | Purpose |
+| --- | --- |
+| `tax_rules` | Output VAT, VDS, or AIT. Inclusive `effective_from` and `effective_to`. A blank classification is its own scope. `documented_rate` is explanatory and is not copied onto a document. Approved legal text is not updated in place. |
+| `mushak_invoice_number_sequences` | One locked counter per Asia/Dhaka year. The number is assigned at issue. |
+| `mushak_invoices` | A Mushak 6.3 linked to one commercial invoice. Amounts are `DECIMAL(19,4)`. Seller and buyer text are copied at issue. |
+| `mushak_invoice_lines` | One row per commercial-invoice line. The typed percentage, VAT, adjustment, and final amount are stored separately. |
+| `mushak_invoice_events` | Prepared, updated, issued, and void. |
+| `vds_records` | Typed VDS basis and amount, in either direction. `certificate_form` stays `unverified`. |
+| `ait_records` | Typed AIT basis and amount, in either direction. Not a VAT amount. |
+
+Mushak 6.3 is not a commercial invoice and not Mushak 6.6. No other Mushak form is stored. No statutory rate is inserted.
 
 ### Accounting
 

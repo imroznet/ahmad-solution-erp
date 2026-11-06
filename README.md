@@ -1,6 +1,6 @@
 # Ahmad Solution Ltd. Business Management System
 
-Internal business management system for Ahmad Solution Ltd., Bangladesh. This release has the application foundation, the company profile, customer and supplier records, quotations, delivery challans, and commercial invoices. A customer and a supplier can be the same organisation. A quotation is a priced offer with hand-typed lines. It is not an invoice, a delivery challan, or a tax form. A delivery challan is not a commercial invoice. A commercial invoice is not a tax invoice or a Mushak form. Tax documents and accounting are planned and are not implemented yet.
+Internal business management system for Ahmad Solution Ltd., Bangladesh. This release has the application foundation, the company profile, customer and supplier records, quotations, delivery challans, commercial invoices, and tax working papers. A customer and a supplier can be the same organisation. A quotation is a priced offer with hand-typed lines. It is not an invoice, a delivery challan, or a tax form. A delivery challan is not a commercial invoice. A commercial invoice is not a tax invoice or a Mushak form. Tax rules can be recorded with a cited source. No VAT rate is installed with the application. Mushak 6.3, VDS, and AIT certificates are not issued. Accounting is planned and is not implemented yet.
 
 This application is separate from the legacy public website. Do not migrate or modify that site as part of this project.
 

@@ -92,6 +92,14 @@ The PDF is rendered by `dompdf/dompdf` when an authorized user or a valid share 
 
 The application timezone is `Asia/Dhaka`. The default currency is BDT. Display grouping is the western three-digit form. Lakh and crore grouping is not applied until the company confirms it.
 
+## Tax rules and tax documents
+
+Output VAT, VDS, and AIT are different `tax_type` values and, for VDS and AIT, different tables. A rule version stores its classification, optional rule code, basis, rate or fixed amount, inclusive or exclusive treatment, threshold treatment, inclusive `effective_from`, inclusive `effective_to`, and the legal instrument's own publication and effective dates. A blank rule code matches only a blank code. Nothing in the seed data is a rate.
+
+A draft can be edited. Approval freezes the rate and the citation. The preparer cannot approve it. Retirement and a later amendment do not change an approved rate. Approving the next version may set the previous open `effective_to` to the day before the new start. A pinned working paper stores the calculation snapshot from the moment it was pinned, so that later close does not change the pinned figure.
+
+Mushak 6.3 is `mushak63_documents`, linked to an issued commercial invoice. Preparing it does not change the invoice. `App\Tax\IssuanceGate` refuses issue, a VDS certificate, and an AIT certificate. The reasons are the open questions in `docs/tax/SOURCE-REGISTER.md`. The gate is code, not a screen setting. Working-paper PDFs say they are not issued tax documents. Downloads are permission-checked and audited. Internal notes are not printed on those PDFs.
+
 ## What is deliberately absent
 
-Mushak forms, VDS, AIT, receivables, payables, and journals are specified in the database plan and are not tables yet. There will be no product, stock, or warehouse tables. A delivery challan and a commercial invoice copy the customer from the accepted quotation. They do not store a separate party key. A quotation, a challan, and a commercial invoice remain different documents.
+Receivables, payables, and journals are specified in the database plan and are not tables yet. There will be no product, stock, or warehouse tables. A delivery challan and a commercial invoice copy the customer from the accepted quotation. They do not store a separate party key. A quotation, a challan, a commercial invoice, and a Mushak working paper remain different documents.

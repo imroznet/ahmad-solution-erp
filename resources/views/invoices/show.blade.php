@@ -8,6 +8,9 @@
             @if ($canPdf)
                 <a href="{{ route('invoices.pdf', $invoice) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">PDF</a>
             @endif
+            @if ($invoice->status === 'issued' && $currentUser?->hasPermission('mushak.create'))
+                <a href="{{ route('mushak.create', ['invoice' => $invoice->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Mushak working paper</a>
+            @endif
             @if ($canUpdate)
                 <a href="{{ route('invoices.edit', $invoice) }}" class="rounded bg-brand px-3 py-2 text-sm font-medium text-white">Edit draft</a>
             @endif

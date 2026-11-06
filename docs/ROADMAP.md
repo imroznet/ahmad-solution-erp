@@ -127,10 +127,26 @@ Not done, and not claimed:
 
 ## Milestone 6 — tax documents
 
-- Effective-dated tax rules
-- Mushak 6.3 first, after the current NBR layout is checked
-- Other Mushak forms only after each form's purpose is verified
-- VDS and AIT kept separate from output VAT
+Done in this branch:
+
+- A source register and a Mushak 6.3 field map, checked on 6 November 2026. Publication dates, file dates, and legal effective dates are recorded separately. The register is `docs/tax/SOURCE-REGISTER.md`
+- Effective-dated tax rule versions for output VAT, VDS, and AIT. Ranges are inclusive. Overlapping draft or approved rules for the same type, classification, and rule code are rejected. An amendment is a new version. Approving it can close the previous open end. It does not rewrite the previous rate
+- No rate is seeded. A missing or unmatched rule stays in review and calculates nothing. A label such as "standard" or "15%" cannot be saved as a classification
+- The person who prepared a version cannot approve it
+- A Mushak 6.3 working paper linked to an issued commercial invoice. It copies that invoice and does not change the invoice's tax-excluded total. Issue is refused in code, and the refusal is audited
+- VDS and AIT records in separate tables, for both directions, with no certificate issue and no amount copied into output VAT
+- Private working-paper PDFs. They are not stored under `public/`
+- Permissions, a repeatable phpMyAdmin upgrade, and the cPanel package list
+
+Not done, and not claimed:
+
+- An issued Mushak 6.3. The commissionerate file linked on 6 November 2026 is a 29 June 2019 PDF, and SRO 125, effective 1 July 2026, does not contain a replacement specimen. The open questions are in the source register
+- A VDS certificate or an AIT certificate. Mushak 6.6 is not implemented
+- A statutory rate for Ahmad Solution Ltd. An approved rule is configuration with a cited source. It is not a legal opinion, and it still cannot issue a tax invoice while the gate is closed
+- Credit notes, debit notes, journals, receivables, payables, receipts, or allocations
+- Email, filing, or deployment
+
+## Milestone 7 — accounting
 
 ## Milestone 7 — accounting
 

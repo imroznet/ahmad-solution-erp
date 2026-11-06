@@ -12,6 +12,7 @@ use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentCategoryController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MushakController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
@@ -22,7 +23,10 @@ use App\Http\Controllers\QuotationShareController;
 use App\Http\Controllers\QuotationWorkflowController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
+use App\Http\Controllers\TaxRuleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WithholdingController;
+use App\Tax\TaxType;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('quotation.share:read')->group(function (): void {
@@ -359,4 +363,106 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])
         ->middleware('permission:invoices.pdf')
         ->name('invoices.pdf');
+
+    Route::get('/tax-rules', [TaxRuleController::class, 'index'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax-rules.index');
+    Route::get('/tax-rules/create', [TaxRuleController::class, 'create'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.create');
+    Route::post('/tax-rules', [TaxRuleController::class, 'store'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.store');
+    Route::get('/tax-rules/{taxRule}', [TaxRuleController::class, 'show'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax-rules.show');
+    Route::get('/tax-rules/{taxRule}/edit', [TaxRuleController::class, 'edit'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.edit');
+    Route::put('/tax-rules/{taxRule}', [TaxRuleController::class, 'update'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.update');
+    Route::get('/tax-rules/{taxRule}/amend', [TaxRuleController::class, 'amendForm'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.amend-form');
+    Route::post('/tax-rules/{taxRule}/amend', [TaxRuleController::class, 'amend'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.amend');
+    Route::post('/tax-rules/{taxRule}/approve', [TaxRuleController::class, 'approve'])
+        ->middleware('permission:tax_rules.approve')
+        ->name('tax-rules.approve');
+    Route::post('/tax-rules/{taxRule}/retire', [TaxRuleController::class, 'retire'])
+        ->middleware('permission:tax_rules.retire')
+        ->name('tax-rules.retire');
+
+    Route::get('/mushak', [MushakController::class, 'index'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.index');
+    Route::get('/mushak/create', [MushakController::class, 'create'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.create');
+    Route::post('/mushak', [MushakController::class, 'store'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.store');
+    Route::get('/mushak/{mushak}', [MushakController::class, 'show'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.show');
+    Route::get('/mushak/{mushak}/edit', [MushakController::class, 'edit'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.edit');
+    Route::put('/mushak/{mushak}', [MushakController::class, 'update'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.update');
+    Route::post('/mushak/{mushak}/issue', [MushakController::class, 'issue'])
+        ->middleware('permission:mushak.issue')
+        ->name('mushak.issue');
+    Route::post('/mushak/{mushak}/void', [MushakController::class, 'void'])
+        ->middleware('permission:mushak.void')
+        ->name('mushak.void');
+    Route::get('/mushak/{mushak}/pdf', [MushakController::class, 'pdf'])
+        ->middleware('permission:mushak.pdf')
+        ->name('mushak.pdf');
+
+    foreach ([
+        'vds' => TaxType::VDS,
+        'ait' => TaxType::AIT,
+    ] as $prefix => $taxType) {
+        Route::get('/'.$prefix, [WithholdingController::class, 'index'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.view')
+            ->name($prefix.'.index');
+        Route::get('/'.$prefix.'/create', [WithholdingController::class, 'create'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.manage')
+            ->name($prefix.'.create');
+        Route::post('/'.$prefix, [WithholdingController::class, 'store'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.manage')
+            ->name($prefix.'.store');
+        Route::get('/'.$prefix.'/{record}', [WithholdingController::class, 'show'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.view')
+            ->whereNumber('record')
+            ->name($prefix.'.show');
+        Route::get('/'.$prefix.'/{record}/edit', [WithholdingController::class, 'edit'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.manage')
+            ->whereNumber('record')
+            ->name($prefix.'.edit');
+        Route::put('/'.$prefix.'/{record}', [WithholdingController::class, 'update'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.manage')
+            ->whereNumber('record')
+            ->name($prefix.'.update');
+        Route::post('/'.$prefix.'/{record}/void', [WithholdingController::class, 'void'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.manage')
+            ->whereNumber('record')
+            ->name($prefix.'.void');
+        Route::get('/'.$prefix.'/{record}/pdf', [WithholdingController::class, 'pdf'])
+            ->defaults('taxType', $taxType)
+            ->middleware('permission:'.$prefix.'.pdf')
+            ->whereNumber('record')
+            ->name($prefix.'.pdf');
+    }
 });

@@ -89,7 +89,8 @@ jobs:
           php artisan asl:export-parties-sql
           php artisan asl:export-quotations-sql
           php artisan asl:export-delivery-documents-sql
-          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql
+          php artisan asl:export-tax-sql
+          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-module.sql
           cat > /tmp/mysql-client.cnf <<'EOF'
           [client]
           host=127.0.0.1
@@ -111,6 +112,8 @@ jobs:
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-quotations-module.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-delivery-documents-module.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-delivery-documents-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-tax-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-tax-module.sql
           categories=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM document_categories" asl_erp)
           test "$categories" = "20"
           party_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Parties'" asl_erp)
@@ -123,10 +126,14 @@ jobs:
           test "$challan_permissions" = "8"
           invoice_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Invoices'" asl_erp)
           test "$invoice_permissions" = "6"
+          tax_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group IN ('Tax rules', 'Mushak', 'VDS', 'AIT')" asl_erp)
+          test "$tax_permissions" = "15"
+          mushak_lines=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT NUMERIC_SCALE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_erp' AND TABLE_NAME='mushak_lines' AND COLUMN_NAME='adjustment_amount'" )
+          test "$mushak_lines" = "4"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in
-              *party*|*quotation*|*delivery_document*) continue ;;
+              *party*|*quotation*|*delivery_document*|*tax*) continue ;;
             esac
             DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction --path="$path"
           done
@@ -205,6 +212,30 @@ jobs:
           test "$history_custom" = "1"
           history_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_07_100003_preserve_delivery_document_line_history'" asl_line_history)
           test "$history_migration" = "1"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade <<'SQL'
+          DELETE FROM permission_role WHERE permission_id IN (SELECT id FROM (SELECT id FROM permissions WHERE permission_group IN ('Tax rules', 'Mushak', 'VDS', 'AIT')) AS tax_permissions);
+          DELETE FROM permissions WHERE permission_group IN ('Tax rules', 'Mushak', 'VDS', 'AIT');
+          SQL
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-tax-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-tax-module.sql
+          upgraded_tax=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group IN ('Tax rules', 'Mushak', 'VDS', 'AIT')" asl_upgrade)
+          test "$upgraded_tax" = "15"
+          upgraded_sales_mushak=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='mushak.view'" asl_upgrade)
+          test "$upgraded_sales_mushak" = "1"
+          upgraded_sales_void=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='mushak.void'" asl_upgrade)
+          test "$upgraded_sales_void" = "0"
+          upgraded_sales_vds=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='vds.view'" asl_upgrade)
+          test "$upgraded_sales_vds" = "0"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade <<'SQL'
+          DELETE FROM permission_role WHERE role_id = (SELECT id FROM roles WHERE slug = 'sales-executive') AND permission_id = (SELECT id FROM permissions WHERE slug = 'mushak.view');
+          INSERT INTO permission_role (role_id, permission_id)
+          SELECT r.id, p.id FROM roles r JOIN permissions p ON p.slug = 'mushak.view' WHERE r.slug = 'document-manager';
+          SQL
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-tax-module.sql
+          tax_sales=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='mushak.view'" asl_upgrade)
+          test "$tax_sales" = "1"
+          tax_custom=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='document-manager' AND p.slug='mushak.view'" asl_upgrade)
+          test "$tax_custom" = "1"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_quantity_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_quantity_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           DB_DATABASE=asl_quotation_lock php scripts/check-quotation-number-lock.php
           DB_DATABASE=asl_quotation_year php scripts/check-quotation-new-year-lock.php

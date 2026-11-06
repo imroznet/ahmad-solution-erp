@@ -61,6 +61,15 @@ return [
         'notice' => 'This is a commercial invoice. Tax is excluded and is not calculated. This document is not a tax invoice or a Mushak form.',
     ],
 
+    /*
+    | Mushak 6.3. The VAT percentage is typed on the document. These settings
+    | do not choose a rate. BDT on the form face is shown at 2 decimal places.
+    */
+    'mushak' => [
+        'number_prefix' => 'M63',
+        'rate_notice' => 'The VAT percentage on this document was entered by the issuer. It was not selected or certified by this system. Rounding / Decimal Adjustment is not VAT.',
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

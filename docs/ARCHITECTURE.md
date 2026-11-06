@@ -32,6 +32,8 @@ Opening a challan or invoice requires the document permission and the same custo
 
 `brick/math` selects GMP, then BCMath, then its pure-PHP calculator. The system status page shows which one is available. The status page does not show the database name, username, password, or application key.
 
+`App\Tax\VatPriceCalculator` calculates VAT from a percentage the user typed. It stores 2, 3, or 4 decimal places and a named rounding method. BDT on a Mushak face is shown at 2 decimal places. A rounding adjustment is separate from VAT. VDS and AIT are not inputs. The detail is in `docs/tax/VAT-CALCULATION.md`.
+
 ## Audit
 
 `App\Services\AuditLogger` writes sign-in, sign-out, failed sign-in, lockout, inactive-account attempts, user changes, password resets, role-permission changes, company profile and address changes, document category changes, document creation, update, retirement, new file versions, private downloads, party, role, contact, and address changes, quotation creation, revision, submission, approval, return, send, cancellation, expiry, share creation, share revocation, public view, public PDF, internal PDF, acceptance, and rejection, and delivery-challan or commercial-invoice creation, update, issue, dispatch, acknowledgment, void, and PDF download. Keys containing `token`, `password`, or `secret` are removed from the payload. Internal notes are left out of those document payloads. A URL under `/q/` is stored as `/q/[redacted]`. The model refuses updates and deletes. The database user can still change the table directly; a trigger can be added later if the host permits it.

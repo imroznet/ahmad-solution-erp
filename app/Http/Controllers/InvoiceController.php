@@ -22,6 +22,7 @@ use App\Quotations\QuotationCalculator;
 use App\Quotations\QuotationStatus;
 use App\Services\AuditLogger;
 use App\Support\Decimal;
+use App\Tax\TaxAuthorizer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -88,6 +89,7 @@ class InvoiceController extends Controller
             'canIssue' => $this->authorizer->canIssueInvoice($user, $invoice),
             'canVoid' => $this->authorizer->canVoidInvoice($user, $invoice),
             'canPdf' => $this->authorizer->canDownloadInvoice($user, $invoice),
+            'canMushak' => $invoice->stringAttribute('status') === DocumentStatus::ISSUED && app(TaxAuthorizer::class)->canCreate($user, $invoice),
         ]);
     }
 

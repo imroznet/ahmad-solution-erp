@@ -40,6 +40,14 @@ The staging database is `ahmadcom_asl_erp`. The host and password come from `.en
 | `commercial_invoices` | Header. Totals are `DECIMAL(18,2)`. Tax is excluded. |
 | `commercial_invoice_lines` | One invoiced slice of a challan line, with the quotation line and the rounded amount. |
 | `commercial_invoice_events` | Issue and void. |
+| `tax_rules` | One output-VAT, VDS, or AIT rule identity. The classification is not a wildcard. |
+| `tax_rule_versions` | Immutable versions after approval. Dates are inclusive. A stored percentage is not applied to a document. |
+| `mushak_number_sequences` | One locked counter per Asia/Dhaka calendar year for Mushak 6.3. |
+| `mushak_invoices` | A tax invoice linked to a commercial invoice. Totals that participate in the VAT calculation are `DECIMAL(20,4)`. |
+| `mushak_lines` | Base, typed VAT percentage, calculated VAT, rounding adjustment, and final amount. A draft edit keeps the previous row. |
+| `mushak_events` | Issue and void. |
+| `vds_records` | A typed VDS amount. It is not output VAT. |
+| `ait_records` | A typed income-tax withholding amount. It is not VAT. |
 | `migrations` | Laravel migration ledger. |
 
 `permissions.permission_group` avoids the reserved word `group`.

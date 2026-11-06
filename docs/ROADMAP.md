@@ -127,10 +127,24 @@ Not done, and not claimed:
 
 ## Milestone 6 — tax documents
 
-- Effective-dated tax rules
-- Mushak 6.3 first, after the current NBR layout is checked
-- Other Mushak forms only after each form's purpose is verified
-- VDS and AIT kept separate from output VAT
+Done in this branch:
+
+- A source register for the owner-confirmed Mushak 6.3 file, with its URL, SHA-256, PDF metadata date, and the date checked. Other NBR indexes are named. Their rates are not activated.
+- Effective-dated tax rule versions for output VAT, VDS, and AIT. Periods include both the start and the end date. Overlapping versions for the same tax type and classification are rejected. An approved version is not rewritten. An amendment is a new version. A stored percentage is not copied onto a document.
+- Mushak 6.3 as its own document, linked to an issued commercial invoice. The commercial invoice is not changed. The company profile and the buyer are snapshotted at issue. A missing company BIN blocks issue. A one-off buyer does not become a customer.
+- A typed VAT percentage. Blank calculates nothing. Zero is used only when it is typed. VAT and the final amount are calculated from that percentage. Editing the final amount keeps the percentage and the adjustment and reverses the base. Precision can be 2, 3, or 4 decimal places. The rounding method is stored. BDT on the form face stays at 2 decimal places. A signed rounding adjustment is stored separately and is not labelled as VAT.
+- VDS and AIT records in both business directions. The amount is typed. It is not added to output VAT. No Mushak 6.6 or withholding certificate is issued.
+- Permissions, private PDFs, audit, repeatable upgrade SQL, and a cPanel package entry.
+
+Not done, and not claimed:
+
+- NBR compliance. The form layout follows the owner-confirmed file. The percentage is not a legal determination.
+- Supplementary duty, and the form's fixed or specific tax alternative to a percentage.
+- Mushak 6.6 and any other Mushak form.
+- A statutory VDS or AIT certificate.
+- A credit note or debit note. Void keeps the record.
+- Journals, receivables, payables, receipts, and payments.
+- Inventory, mail, and deployment.
 
 ## Milestone 7 — accounting
 

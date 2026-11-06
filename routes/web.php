@@ -12,6 +12,7 @@ use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentCategoryController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MushakDocumentController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
@@ -22,7 +23,9 @@ use App\Http\Controllers\QuotationShareController;
 use App\Http\Controllers\QuotationWorkflowController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
+use App\Http\Controllers\TaxRuleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WithholdingRecordController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('quotation.share:read')->group(function (): void {
@@ -359,4 +362,115 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])
         ->middleware('permission:invoices.pdf')
         ->name('invoices.pdf');
+
+    Route::get('/tax-rules', [TaxRuleController::class, 'index'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax-rules.index');
+    Route::get('/tax-rules/create', [TaxRuleController::class, 'create'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.create');
+    Route::post('/tax-rules', [TaxRuleController::class, 'store'])
+        ->middleware('permission:tax_rules.manage')
+        ->name('tax-rules.store');
+    Route::get('/tax-rules/preview', [TaxRuleController::class, 'preview'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax-rules.preview');
+    Route::get('/tax-rules/{taxRule}', [TaxRuleController::class, 'show'])
+        ->middleware('permission:tax_rules.view')
+        ->whereNumber('taxRule')
+        ->name('tax-rules.show');
+    Route::get('/tax-rules/{taxRule}/edit', [TaxRuleController::class, 'edit'])
+        ->middleware('permission:tax_rules.manage')
+        ->whereNumber('taxRule')
+        ->name('tax-rules.edit');
+    Route::put('/tax-rules/{taxRule}', [TaxRuleController::class, 'update'])
+        ->middleware('permission:tax_rules.manage')
+        ->whereNumber('taxRule')
+        ->name('tax-rules.update');
+    Route::post('/tax-rules/{taxRule}/approve', [TaxRuleController::class, 'approve'])
+        ->middleware('permission:tax_rules.approve')
+        ->whereNumber('taxRule')
+        ->name('tax-rules.approve');
+    Route::post('/tax-rules/{taxRule}/amend', [TaxRuleController::class, 'amend'])
+        ->middleware('permission:tax_rules.manage')
+        ->whereNumber('taxRule')
+        ->name('tax-rules.amend');
+    Route::post('/tax-rules/{taxRule}/retire', [TaxRuleController::class, 'retire'])
+        ->middleware('permission:tax_rules.approve')
+        ->whereNumber('taxRule')
+        ->name('tax-rules.retire');
+
+    Route::get('/mushak', [MushakDocumentController::class, 'index'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.index');
+    Route::get('/mushak/create', [MushakDocumentController::class, 'create'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.create');
+    Route::post('/mushak', [MushakDocumentController::class, 'store'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.store');
+    Route::get('/mushak/{mushak}', [MushakDocumentController::class, 'show'])
+        ->middleware('permission:mushak.view')
+        ->whereNumber('mushak')
+        ->name('mushak.show');
+    Route::get('/mushak/{mushak}/edit', [MushakDocumentController::class, 'edit'])
+        ->middleware('permission:mushak.create')
+        ->whereNumber('mushak')
+        ->name('mushak.edit');
+    Route::put('/mushak/{mushak}', [MushakDocumentController::class, 'update'])
+        ->middleware('permission:mushak.create')
+        ->whereNumber('mushak')
+        ->name('mushak.update');
+    Route::post('/mushak/{mushak}/issue', [MushakDocumentController::class, 'issue'])
+        ->middleware('permission:mushak.issue')
+        ->whereNumber('mushak')
+        ->name('mushak.issue');
+    Route::post('/mushak/{mushak}/void', [MushakDocumentController::class, 'void'])
+        ->middleware('permission:mushak.void')
+        ->whereNumber('mushak')
+        ->name('mushak.void');
+    Route::post('/mushak/{mushak}/treatment', [MushakDocumentController::class, 'treatment'])
+        ->middleware('permission:mushak.record_treatment')
+        ->whereNumber('mushak')
+        ->name('mushak.treatment');
+    Route::get('/mushak/{mushak}/pdf', [MushakDocumentController::class, 'pdf'])
+        ->middleware('permission:mushak.pdf')
+        ->whereNumber('mushak')
+        ->name('mushak.pdf');
+
+    Route::get('/vds-records', [WithholdingRecordController::class, 'index'])
+        ->middleware('permission:vds.view')
+        ->name('vds.index');
+    Route::get('/vds-records/create', [WithholdingRecordController::class, 'create'])
+        ->middleware('permission:vds.manage')
+        ->name('vds.create');
+    Route::post('/vds-records', [WithholdingRecordController::class, 'store'])
+        ->middleware('permission:vds.manage')
+        ->name('vds.store');
+    Route::get('/vds-records/{record}', [WithholdingRecordController::class, 'show'])
+        ->middleware('permission:vds.view')
+        ->whereNumber('record')
+        ->name('vds.show');
+    Route::post('/vds-records/{record}/void', [WithholdingRecordController::class, 'void'])
+        ->middleware('permission:vds.void')
+        ->whereNumber('record')
+        ->name('vds.void');
+
+    Route::get('/ait-records', [WithholdingRecordController::class, 'index'])
+        ->middleware('permission:ait.view')
+        ->name('ait.index');
+    Route::get('/ait-records/create', [WithholdingRecordController::class, 'create'])
+        ->middleware('permission:ait.manage')
+        ->name('ait.create');
+    Route::post('/ait-records', [WithholdingRecordController::class, 'store'])
+        ->middleware('permission:ait.manage')
+        ->name('ait.store');
+    Route::get('/ait-records/{record}', [WithholdingRecordController::class, 'show'])
+        ->middleware('permission:ait.view')
+        ->whereNumber('record')
+        ->name('ait.show');
+    Route::post('/ait-records/{record}/void', [WithholdingRecordController::class, 'void'])
+        ->middleware('permission:ait.void')
+        ->whereNumber('record')
+        ->name('ait.void');
 });

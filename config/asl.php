@@ -61,6 +61,15 @@ return [
         'notice' => 'This is a commercial invoice. Tax is excluded and is not calculated. This document is not a tax invoice or a Mushak form.',
     ],
 
+    /*
+    | Mushak 6.3 is a separate document. The VAT percentage and VAT amount are
+    | typed. Nothing in this file is a statutory rate.
+    */
+    'mushak' => [
+        'number_prefix' => 'M63',
+        'max_lines' => 30,
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

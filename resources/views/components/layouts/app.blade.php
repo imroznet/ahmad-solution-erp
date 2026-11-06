@@ -43,6 +43,18 @@
                 @if ($currentUser?->hasPermission('invoices.view'))
                     <a href="{{ route('invoices.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('invoices.*'), 'hover:bg-white/10' => ! request()->routeIs('invoices.*')])>Invoices</a>
                 @endif
+                @if ($currentUser?->hasPermission('mushak.view'))
+                    <a href="{{ route('mushak.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('mushak.*'), 'hover:bg-white/10' => ! request()->routeIs('mushak.*')])>Mushak 6.3</a>
+                @endif
+                @if ($currentUser?->hasPermission('tax_rules.view'))
+                    <a href="{{ route('tax-rules.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('tax-rules.*'), 'hover:bg-white/10' => ! request()->routeIs('tax-rules.*')])>Tax rules</a>
+                @endif
+                @if ($currentUser?->hasPermission('vds.view'))
+                    <a href="{{ route('vds.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('vds.*'), 'hover:bg-white/10' => ! request()->routeIs('vds.*')])>VDS</a>
+                @endif
+                @if ($currentUser?->hasPermission('ait.view'))
+                    <a href="{{ route('ait.index') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('ait.*'), 'hover:bg-white/10' => ! request()->routeIs('ait.*')])>AIT</a>
+                @endif
                 @if ($currentUser?->hasPermission('quotations.approve'))
                     <a href="{{ route('quotations.approvals') }}" @class(['block rounded px-3 py-2 text-sm focus-visible:outline-white', 'bg-white/15 font-medium' => request()->routeIs('quotations.approvals'), 'hover:bg-white/10' => ! request()->routeIs('quotations.approvals')])>Approvals</a>
                 @endif

@@ -25,6 +25,9 @@
     @endif
 
     <p class="mt-4 rounded border border-line bg-white px-3 py-2 text-sm">{{ $invoice->tax_notice }}</p>
+    @if ($invoice->stringAttribute('status') === 'issued' && $currentUser?->hasPermission('mushak.create'))
+        <p class="mt-3 text-sm"><a href="{{ route('mushak.create', ['invoice' => $invoice->id]) }}" class="font-medium text-brand hover:underline">Prepare a separate Mushak 6.3</a> for this issued invoice. This commercial invoice is not changed.</p>
+    @endif
 
     <dl class="mt-4 grid gap-4 rounded border border-line bg-white p-4 text-sm sm:grid-cols-2">
         <div><dt class="text-muted">Invoice date</dt><dd>{{ $invoice->invoice_date?->format('d M Y') }}</dd></div>

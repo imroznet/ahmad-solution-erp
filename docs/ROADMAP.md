@@ -118,7 +118,7 @@ Not done, and not claimed:
 - A share link for either document
 - Credit notes and debit notes. Void is the adjustment path in this release
 - Inventory, products, stock, warehouses, procurement, or stock movements
-- VAT, a VAT rate, Mushak, VDS, AIT, receivables, payables, receipts, or journals
+- VAT, a VAT rate, Mushak, VDS, AIT, receivables, payables, receipts, or journals. Those tax records are Milestone 6 and are separate documents. This invoice still stores tax as excluded
 - NBR compliance. Tax is excluded and is not calculated
 - Per-customer assignment beyond the quotation visibility check. Sales can see every customer document
 - Adding a vehicle after issue. Acknowledgment does not require dispatch
@@ -127,10 +127,29 @@ Not done, and not claimed:
 
 ## Milestone 6 — tax documents
 
-- Effective-dated tax rules
-- Mushak 6.3 first, after the current NBR layout is checked
-- Other Mushak forms only after each form's purpose is verified
-- VDS and AIT kept separate from output VAT
+Done in this branch:
+
+- A source register and a Mushak 6.3 field map for the owner-confirmed PDF, including the checksum and the questions that are still open
+- Effective-dated tax rules for output VAT, VDS, and AIT, with inclusive dates, overlap rejection, and a new version instead of a rewrite
+- No seeded rate. An approved rate is not copied onto a document. A preview says which rule matched and that no rate was applied
+- Mushak 6.3 as its own document. The company profile supplies the seller and is snapshotted on issue. A missing BIN or address blocks issue
+- A buyer from an existing customer, or a one-off buyer that is not saved as a party
+- VAT percentage, VAT amount, supplementary duty, and totals typed by a person. Blank stays blank. The typed figures are checked against each other only when the person has entered the figures being checked
+- Issued Mushak rows stay as issued. Void keeps them. A treatment record does not change the figures. A later rule amendment does not change the snapshot
+- VDS and AIT records in both directions, in separate tables, never added to the VAT total. Mushak 6.6 is not generated
+- Private Mushak PDFs, permission checks, and audit events
+- A repeatable phpMyAdmin upgrade for a database that already has commercial invoices
+
+Not done, and not claimed:
+
+- That the layout is unchanged by SRO No-125-Ain/2026/330-Mushak. The gazette text was not retrieved
+- A statutory VAT rate, a VDS rate, or an AIT rate for Ahmad Solution Ltd.
+- Mushak 6.2, 6.4, 6.5, or 6.6
+- A statutory credit note. Void is an internal cancellation
+- Saving a one-off buyer as a customer
+- Receivables, payables, receipts, payments, and journals
+- Email, filing, or a return submission
+- Deployment onto `stage.ahmad.bd`
 
 ## Milestone 7 — accounting
 

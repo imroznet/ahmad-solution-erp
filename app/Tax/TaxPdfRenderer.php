@@ -2,67 +2,35 @@
 
 namespace App\Tax;
 
-use App\Models\Mushak63Document;
-use App\Models\WithholdingRecord;
+use App\Models\MushakInvoice;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Renders an internal working paper. Remote fetching and PHP inside the HTML
- * are disabled. The file is not written under public/.
+ * Private PDFs. Remote fetching and PHP inside the HTML are disabled.
+ * The file is not written under public/.
  */
 final class TaxPdfRenderer
 {
-    public function downloadMushak(Mushak63Document $document): Response
+    public function mushak(MushakInvoice $invoice): Response
     {
-        $document->loadMissing(['lines', 'invoice']);
-        $binary = $this->render('tax.working-paper', [
-            'title' => 'Mushak 6.3 working paper',
-            'notice' => 'This is not an issued Mushak 6.3 tax invoice. Statutory issue is blocked. See the source register.',
-            'lines' => [
-                'Linked commercial invoice' => $document->stringAttribute('invoice_number'),
-                'Quotation' => (string) $document->getAttribute('quotation_number'),
-                'Customer' => $document->stringAttribute('party_legal_name'),
-                'Customer BIN' => (string) ($document->getAttribute('party_bin') ?? ''),
-                'Classification' => $document->stringAttribute('supply_classification'),
-                'Rule code' => $document->stringAttribute('rule_code') === '' ? 'None' : $document->stringAttribute('rule_code'),
-                'Invoice total (tax excluded)' => $document->decimalAttribute('invoice_total').' '.$document->stringAttribute('currency_code'),
-                'Pinned preview' => $this->preview($document->getAttribute('pinned_rule_snapshot')),
-            ],
-            'table' => $document->lines->map(fn ($line): array => [
-                (string) $line->getAttribute('position'),
-                $line->stringAttribute('description'),
-                $line->decimalAttribute('quantity'),
-                $line->decimalAttribute('line_total'),
-            ])->all(),
-            'blockers' => IssuanceGate::blockers(),
-        ]);
+        $invoice->loadMissing(['lines', 'commercialInvoice']);
+        $binary = $this->render('tax.mushak.pdf', ['invoice' => $invoice, 'lines' => $invoice->lines]);
 
-        return $this->response($binary, 'mushak-working-paper-'.$document->getKey().'.pdf');
+        return $this->response($binary, $this->filename($invoice->displayNumber(), 'mushak', (int) $invoice->getKey()));
     }
 
-    public function downloadWithholding(WithholdingRecord $record): Response
+    public function deduction(string $kind, Model $record): Response
     {
-        $label = TaxType::label($record->taxType());
-        $binary = $this->render('tax.working-paper', [
-            'title' => $label.' working paper',
-            'notice' => 'This is not a '.$label.' certificate. Certificate issue is blocked. This amount is not output VAT.',
-            'lines' => [
-                'Direction' => TaxDirection::label($record->stringAttribute('direction')),
-                'Other party' => $record->stringAttribute('party_legal_name'),
-                'Classification' => $record->stringAttribute('supply_classification'),
-                'Record date' => (string) $record->dateString('record_date'),
-                'Base' => $record->decimalAttribute('basis_amount').' BDT',
-                'Certificate reference received' => (string) ($record->getAttribute('certificate_reference') ?? ''),
-                'Treasury reference' => (string) ($record->getAttribute('treasury_reference') ?? ''),
-                'Pinned preview' => $this->preview($record->getAttribute('pinned_rule_snapshot')),
-            ],
-            'table' => [],
-            'blockers' => IssuanceGate::blockers(),
+        $binary = $this->render('tax.deductions.pdf', [
+            'kind' => $kind,
+            'title' => $kind === 'vds' ? 'VDS record' : 'AIT record',
+            'record' => $record,
         ]);
 
-        return $this->response($binary, strtolower($label).'-working-paper-'.$record->getKey().'.pdf');
+        return $this->response($binary, $this->filename(strtoupper($kind).'-'.$record->getKey(), $kind, (int) $record->getKey()));
     }
 
     /**
@@ -94,15 +62,10 @@ final class TaxPdfRenderer
         ]);
     }
 
-    private function preview(mixed $snapshot): string
+    private function filename(string $number, string $kind, int $id): string
     {
-        if (! is_array($snapshot)) {
-            return 'No approved rule is pinned. No tax amount is calculated.';
-        }
+        $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $number) ?: $kind.'-'.$id;
 
-        $amount = $snapshot['amount'] ?? null;
-        $version = $snapshot['version_id'] ?? null;
-
-        return 'Rule version '.$version.', preview BDT '.(is_string($amount) || is_int($amount) ? (string) $amount : 'not calculated').'. Not an issued assessment.';
+        return $safe.'.pdf';
     }
 }

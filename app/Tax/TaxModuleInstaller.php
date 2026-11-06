@@ -21,10 +21,6 @@ final class TaxModuleInstaller
         }
 
         foreach (PermissionCatalog::permissions() as $permission) {
-            if (! in_array($permission['group'], self::groups(), true)) {
-                continue;
-            }
-
             $record = Permission::query()->firstOrNew(['slug' => $permission['slug']]);
 
             if ($record->exists) {
@@ -65,14 +61,6 @@ final class TaxModuleInstaller
     }
 
     /**
-     * @return list<string>
-     */
-    public static function groups(): array
-    {
-        return ['Tax rules', 'Mushak', 'VDS', 'AIT'];
-    }
-
-    /**
      * @return list<int>
      */
     public static function permissionIds(): array
@@ -80,7 +68,7 @@ final class TaxModuleInstaller
         $ids = [];
 
         foreach (PermissionCatalog::permissions() as $permission) {
-            if (in_array($permission['group'], self::groups(), true)) {
+            if (in_array($permission['group'], ['Tax rules', 'Mushak', 'VDS', 'AIT'], true)) {
                 $ids[] = $permission['id'];
             }
         }

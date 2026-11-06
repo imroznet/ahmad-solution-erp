@@ -2,40 +2,88 @@
 
 namespace App\Models;
 
-use App\Tax\TaxType;
+use App\Models\Concerns\FreezesRecordedDeduction;
+use App\Models\Concerns\ReadsStoredValues;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'direction',
+    'status',
     'party_id',
+    'counterparty_name',
+    'counterparty_bin',
+    'counterparty_tin',
     'commercial_invoice_id',
-    'underlying_reference',
-    'supply_classification',
-    'rule_code',
-    'basis_amount',
-    'currency_code',
+    'mushak_invoice_id',
+    'source_reference',
+    'taxable_basis',
+    'deducted_amount',
     'record_date',
-    'pinned_tax_rule_version_id',
-    'pinned_rule_snapshot',
     'certificate_reference',
     'treasury_reference',
-    'party_legal_name',
-    'party_tin',
-    'party_bin',
-    'company_snapshot',
+    'tax_rule_id',
+    'rule_snapshot',
+    'certificate_form',
+    'review_status',
+    'notes',
     'internal_notes',
-    'status',
+    'recorded_at',
+    'recorded_by',
     'voided_at',
     'voided_by',
     'void_reason',
     'created_by',
 ])]
-class VdsRecord extends WithholdingRecord
+class VdsRecord extends Model
 {
-    protected $table = 'vds_records';
+    use FreezesRecordedDeduction;
+    use ReadsStoredValues;
 
-    public function taxType(): string
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
     {
-        return TaxType::VDS;
+        return [
+            'taxable_basis' => 'decimal:4',
+            'deducted_amount' => 'decimal:4',
+            'record_date' => 'date',
+            'rule_snapshot' => 'array',
+            'recorded_at' => 'datetime',
+            'voided_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<Party, $this>
+     */
+    public function party(): BelongsTo
+    {
+        return $this->belongsTo(Party::class);
+    }
+
+    /**
+     * @return BelongsTo<TaxRule, $this>
+     */
+    public function taxRule(): BelongsTo
+    {
+        return $this->belongsTo(TaxRule::class);
+    }
+
+    /**
+     * @return BelongsTo<MushakInvoice, $this>
+     */
+    public function mushakInvoice(): BelongsTo
+    {
+        return $this->belongsTo(MushakInvoice::class);
+    }
+
+    public function directionLabel(): string
+    {
+        return $this->stringAttribute('direction') === 'deducted_by_us'
+            ? 'Deducted by Ahmad Solution Ltd.'
+            : 'Withheld from Ahmad Solution Ltd.';
     }
 }

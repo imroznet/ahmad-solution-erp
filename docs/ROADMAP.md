@@ -129,24 +129,20 @@ Not done, and not claimed:
 
 Done in this branch:
 
-- A source register and a Mushak 6.3 field map, checked on 6 November 2026. Publication dates, file dates, and legal effective dates are recorded separately. The register is `docs/tax/SOURCE-REGISTER.md`
-- Effective-dated tax rule versions for output VAT, VDS, and AIT. Ranges are inclusive. Overlapping draft or approved rules for the same type, classification, and rule code are rejected. An amendment is a new version. Approving it can close the previous open end. It does not rewrite the previous rate
-- No rate is seeded. A missing or unmatched rule stays in review and calculates nothing. A label such as "standard" or "15%" cannot be saved as a classification
-- The person who prepared a version cannot approve it
-- A Mushak 6.3 working paper linked to an issued commercial invoice. It copies that invoice and does not change the invoice's tax-excluded total. Issue is refused in code, and the refusal is audited
-- VDS and AIT records in separate tables, for both directions, with no certificate issue and no amount copied into output VAT
-- Private working-paper PDFs. They are not stored under `public/`
-- Permissions, a repeatable phpMyAdmin upgrade, and the cPanel package list
+- A source register and a Mushak 6.3 field map for the owner-confirmed PDF, with the 2026 SRO and withholding-rule index entries recorded separately from anything the gazette text has not confirmed
+- Effective-dated tax rules for output VAT, VDS, and AIT. Approved text is frozen. An amendment is a new version. Overlapping active rules for the same type and classification are rejected. A blank classification is not a wildcard. No rate is seeded, and a rule does not fill a Mushak percentage
+- Mushak 6.3 as its own document on an issued commercial invoice. Seller BIN and address come from the company profile and are snapshotted at issue. The buyer can be the invoice customer, an existing party, or a one-off name that does not create a party. Issued rows cannot be edited. Void keeps the row. The PDF is private
+- A typed VAT percentage, including an explicit zero. A blank percentage does not calculate. VAT and the VAT-inclusive final amount calculate from that percentage. Editing the final amount reverse-calculates the base and keeps the percentage and the adjustment. `final = base + VAT + adjustment`. Precision 2, 3, or 4 and the selected rounding method are stored. A signed rounding adjustment is separate from VAT. BDT on the form is shown at two decimal places
+- VDS and AIT records in both directions, with typed basis and amount. They are not added to output VAT. No Mushak 6.6 or withholding certificate is generated, because those forms were not verified
 
 Not done, and not claimed:
 
-- An issued Mushak 6.3. The commissionerate file linked on 6 November 2026 is a 29 June 2019 PDF, and SRO 125, effective 1 July 2026, does not contain a replacement specimen. The open questions are in the source register
-- A VDS certificate or an AIT certificate. Mushak 6.6 is not implemented
-- A statutory rate for Ahmad Solution Ltd. An approved rule is configuration with a cited source. It is not a legal opinion, and it still cannot issue a tax invoice while the gate is closed
-- Credit notes, debit notes, journals, receivables, payables, receipts, or allocations
+- A statutory VAT rate, exemption, threshold, or specific-tax amount
+- NBR compliance of a calculated document
+- Mushak 6.6, or any other Mushak form
+- An official VDS or AIT certificate
+- Journals, receivables, payables, receipts, or payments
 - Email, filing, or deployment
-
-## Milestone 7 — accounting
 
 ## Milestone 7 — accounting
 

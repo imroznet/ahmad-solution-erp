@@ -2,154 +2,132 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\AttemptsTax;
-use App\Http\Requests\SaveTaxRuleRequest;
-use App\Http\Requests\VoidTaxDocumentRequest;
-use App\Models\TaxRuleVersion;
-use App\Tax\IssuanceGate;
-use App\Tax\TaxCalculator;
-use App\Tax\TaxRuleSelector;
-use App\Tax\TaxRuleStatus;
+use App\Models\TaxRule;
+use App\Models\User;
+use App\Services\AuditLogger;
+use App\Tax\TaxRuleException;
+use App\Tax\TaxRulePreview;
 use App\Tax\TaxRuleWriter;
-use App\Tax\TaxText;
+use App\Tax\TaxType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TaxRuleController extends Controller
 {
-    use AttemptsTax;
+    public function __construct(
+        private readonly TaxRuleWriter $writer,
+        private readonly TaxRulePreview $preview,
+        private readonly AuditLogger $audit,
+    ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('tax-rules.index', [
-            'rules' => TaxRuleVersion::query()->orderByDesc('id')->limit(100)->get(),
-            'blockers' => IssuanceGate::blockers(),
+        $type = $request->string('type')->toString();
+
+        return view('tax.rules.index', [
+            'rules' => TaxRule::query()
+                ->when(in_array($type, TaxType::ALL, true), fn ($query) => $query->where('tax_type', $type))
+                ->orderByDesc('id')
+                ->paginate(20)
+                ->withQueryString(),
+            'type' => $type,
         ]);
     }
 
     public function create(): View
     {
-        return view('tax-rules.form', ['rule' => null]);
+        return view('tax.rules.form', ['rule' => null]);
     }
 
-    public function store(SaveTaxRuleRequest $request, TaxRuleWriter $writer): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.manage'), 403);
-        $rule = $this->attemptTax(fn () => $writer->create($this->taxActor(), $request->validated()));
+        $rule = $this->attempt(fn (): TaxRule => $this->writer->create($this->actor($request), $request->all()));
+        $this->audit->record('tax_rule_created', $rule, newValues: ['rule_code' => $rule->stringAttribute('rule_code'), 'tax_type' => $rule->stringAttribute('tax_type')], actor: $this->actor($request));
 
-        return redirect()->route('tax-rules.show', $rule)->with('status', 'Draft tax rule saved. It does not apply until someone else approves it.');
+        return redirect()->route('tax.rules.show', $rule)->with('status', 'Draft tax rule saved. It does not set a VAT percentage.');
     }
 
-    public function show(TaxRuleVersion $taxRule, Request $request, TaxRuleSelector $selector, TaxCalculator $calculator): View
+    public function show(Request $request, TaxRule $rule): View
     {
-        $taxRule->load(['events.actor', 'createdBy', 'approvedBy']);
-        $preview = null;
-        $onDate = $request->string('on_date')->toString();
-        $base = $request->string('base')->toString();
+        $explanation = null;
 
-        if ($onDate !== '') {
-            $selection = $selector->select(
-                $taxRule->stringAttribute('tax_type'),
-                $taxRule->stringAttribute('supply_classification'),
-                $taxRule->stringAttribute('rule_code'),
-                $onDate,
-            );
-            $assessment = null;
-
-            if ($selection->matched() && $selection->version instanceof TaxRuleVersion && $base !== '') {
-                $assessment = $calculator->fromSnapshot(
-                    $taxRule->stringAttribute('tax_type'),
-                    $base,
-                    $selection->version->calculationSnapshot(),
-                );
-            }
-
-            $preview = ['selection' => $selection, 'assessment' => $assessment];
+        if ($request->filled('on_date')) {
+            $explanation = $this->attempt(fn (): array => $this->preview->explain(
+                $rule->stringAttribute('tax_type'),
+                $request->string('classification')->toString(),
+                $request->string('on_date')->toString(),
+            ));
         }
 
-        $user = $this->taxActor();
-
-        return view('tax-rules.show', [
-            'rule' => $taxRule,
-            'preview' => $preview,
-            'blockers' => IssuanceGate::blockers(),
-            'canApprove' => $user->hasPermission('tax_rules.approve') && $taxRule->stringAttribute('approval_status') === TaxRuleStatus::DRAFT && (int) $taxRule->created_by !== (int) $user->getKey(),
-            'canRetire' => $user->hasPermission('tax_rules.retire') && $taxRule->stringAttribute('approval_status') === TaxRuleStatus::APPROVED,
-            'canAmend' => $user->hasPermission('tax_rules.manage') && $taxRule->stringAttribute('approval_status') === TaxRuleStatus::APPROVED,
-            'canEdit' => $user->hasPermission('tax_rules.manage') && $taxRule->stringAttribute('approval_status') === TaxRuleStatus::DRAFT,
+        return view('tax.rules.show', [
+            'rule' => $rule->load('predecessor'),
+            'explanation' => $explanation,
         ]);
     }
 
-    public function edit(TaxRuleVersion $taxRule): View
+    public function edit(TaxRule $rule): View
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.manage'), 403);
-        abort_unless($taxRule->stringAttribute('approval_status') === TaxRuleStatus::DRAFT, 403);
+        abort_unless($rule->stringAttribute('approval_status') === 'draft', 404);
 
-        return view('tax-rules.form', ['rule' => $taxRule]);
+        return view('tax.rules.form', ['rule' => $rule]);
     }
 
-    public function update(SaveTaxRuleRequest $request, TaxRuleVersion $taxRule, TaxRuleWriter $writer): RedirectResponse
+    public function update(Request $request, TaxRule $rule): RedirectResponse
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.manage'), 403);
-        $this->attemptTax(fn () => $writer->updateDraft($taxRule, $this->taxActor(), $request->validated()));
+        $this->attempt(fn (): TaxRule => $this->writer->update($this->actor($request), $rule, $request->all()));
+        $this->audit->record('tax_rule_updated', $rule, newValues: ['rule_code' => $rule->stringAttribute('rule_code')], actor: $this->actor($request));
 
-        return redirect()->route('tax-rules.show', $taxRule)->with('status', 'Draft tax rule updated.');
+        return redirect()->route('tax.rules.show', $rule)->with('status', 'Draft tax rule updated.');
     }
 
-    public function amendForm(TaxRuleVersion $taxRule): View
+    public function approve(Request $request, TaxRule $rule): RedirectResponse
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.manage'), 403);
-        abort_unless($taxRule->stringAttribute('approval_status') === TaxRuleStatus::APPROVED, 403);
+        $this->attempt(fn (): TaxRule => $this->writer->approve($this->actor($request), $rule));
+        $this->audit->record('tax_rule_approved', $rule, newValues: ['version' => $rule->fresh()?->getAttribute('version')], actor: $this->actor($request));
 
-        return view('tax-rules.form', ['rule' => $taxRule, 'amending' => true]);
+        return redirect()->route('tax.rules.show', $rule)->with('status', 'Tax rule approved. It still does not fill a Mushak percentage.');
     }
 
-    public function amend(SaveTaxRuleRequest $request, TaxRuleVersion $taxRule, TaxRuleWriter $writer): RedirectResponse
+    public function retire(Request $request, TaxRule $rule): RedirectResponse
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.manage'), 403);
-        $created = $this->attemptTax(fn () => $writer->amend($taxRule, $this->taxActor(), $request->validated()));
+        $this->attempt(fn (): TaxRule => $this->writer->retire($this->actor($request), $rule));
+        $this->audit->record('tax_rule_retired', $rule, actor: $this->actor($request));
 
-        return redirect()->route('tax-rules.show', $created)->with('status', 'Draft amendment saved. The approved version is unchanged until this draft is approved.');
+        return redirect()->route('tax.rules.show', $rule)->with('status', 'Tax rule retired. Issued documents keep their snapshots.');
     }
 
-    public function approve(TaxRuleVersion $taxRule, TaxRuleWriter $writer): RedirectResponse
+    public function amend(Request $request, TaxRule $rule): RedirectResponse
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.approve'), 403);
-        $this->attemptTax(fn () => $writer->approve($taxRule, $this->taxActor()));
+        $amendment = $this->attempt(fn (): TaxRule => $this->writer->amend($this->actor($request), $rule, $request->all()));
+        $this->audit->record('tax_rule_amended', $amendment, newValues: ['supersedes_rule_id' => $rule->id], actor: $this->actor($request));
 
-        return redirect()->route('tax-rules.show', $taxRule)->with('status', 'Tax rule approved. It still does not issue a Mushak, VDS certificate, or AIT certificate.');
+        return redirect()->route('tax.rules.edit', $amendment)->with('status', 'Amendment saved as a new draft. The approved rule was not rewritten.');
     }
 
-    public function retire(VoidTaxDocumentRequest $request, TaxRuleVersion $taxRule, TaxRuleWriter $writer): RedirectResponse
+    private function actor(Request $request): User
     {
-        abort_unless($this->taxActor()->hasPermission('tax_rules.retire'), 403);
-        $this->attemptTax(fn () => $writer->retire($taxRule, $this->taxActor(), (string) $request->validated('reason')));
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
 
-        return redirect()->route('tax-rules.show', $taxRule)->with('status', 'Tax rule retired. Pinned snapshots on existing papers are kept.');
+        return $user;
     }
 
-    public function preview(Request $request, TaxRuleSelector $selector): RedirectResponse
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $action
+     * @return T
+     */
+    private function attempt(callable $action): mixed
     {
-        $date = $request->string('on_date')->toString();
-        $classification = TaxText::classification($request->string('supply_classification')->toString());
-        $type = $request->string('tax_type')->toString();
-        $rule = TaxRuleVersion::query()->find($request->integer('tax_rule'));
-
-        if (! $rule instanceof TaxRuleVersion) {
-            $rule = TaxRuleVersion::query()
-                ->where('tax_type', $type)
-                ->where('supply_classification', $classification)
-                ->orderByDesc('id')
-                ->first();
+        try {
+            return $action();
+        } catch (TaxRuleException $exception) {
+            throw ValidationException::withMessages([
+                $exception->field => $exception->getMessage(),
+            ]);
         }
-
-        abort_unless($rule instanceof TaxRuleVersion, 404);
-
-        return redirect()->route('tax-rules.show', [
-            'taxRule' => $rule,
-            'on_date' => $date,
-            'base' => $request->string('base')->toString(),
-        ]);
     }
 }

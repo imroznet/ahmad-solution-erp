@@ -3,8 +3,8 @@
 namespace App\Tax;
 
 /**
- * Output VAT, VDS, and income-tax withholding are different taxes.
- * A row of one type is never a row of another.
+ * Output VAT, VDS, and AIT are separate kinds of tax.
+ * A record of one kind is never an amount of another kind.
  */
 final class TaxType
 {
@@ -15,12 +15,13 @@ final class TaxType
     public const AIT = 'ait';
 
     /**
-     * @return list<string>
+     * @var list<string>
      */
-    public static function all(): array
-    {
-        return [self::OUTPUT_VAT, self::VDS, self::AIT];
-    }
+    public const ALL = [
+        self::OUTPUT_VAT,
+        self::VDS,
+        self::AIT,
+    ];
 
     public static function label(string $type): string
     {

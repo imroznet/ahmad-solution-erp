@@ -14,6 +14,13 @@
             @if ($canUpdate)
                 <a href="{{ route('invoices.edit', $invoice) }}" class="rounded bg-brand px-3 py-2 text-sm font-medium text-white">Edit draft</a>
             @endif
+            @if ($invoice->status === 'issued' && $currentUser?->hasPermission('mushak.create'))
+                <form method="POST" action="{{ route('mushak.store') }}">
+                    @csrf
+                    <input type="hidden" name="commercial_invoice_id" value="{{ $invoice->id }}">
+                    <button type="submit" class="rounded border border-line bg-white px-3 py-2 text-sm">Prepare Mushak 6.3</button>
+                </form>
+            @endif
         </div>
     </div>
 

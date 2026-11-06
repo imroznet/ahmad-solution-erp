@@ -61,6 +61,10 @@ return [
         'notice' => 'This is a commercial invoice. Tax is excluded and is not calculated. This document is not a tax invoice or a Mushak form.',
     ],
 
+    'mushak' => [
+        'number_prefix' => 'M63',
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

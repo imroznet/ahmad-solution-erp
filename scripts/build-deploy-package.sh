@@ -34,7 +34,7 @@ if [[ ! -f "$ROOT/public/build/manifest.json" ]]; then
     exit 1
 fi
 
-for required in deploy/mysql-schema.sql deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-documents-module.sql deploy/generate-admin-sql.php; do
+for required in deploy/mysql-schema.sql deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-module.sql deploy/generate-admin-sql.php; do
     if [[ ! -f "$ROOT/$required" ]]; then
         echo "Missing ${required}." >&2
         exit 1

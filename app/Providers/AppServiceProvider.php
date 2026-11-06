@@ -66,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
             'quotations.*',
             'challans.*',
             'invoices.*',
+            'tax.*',
         ], function ($view): void {
             $user = auth()->user();
 

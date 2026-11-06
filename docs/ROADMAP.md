@@ -127,10 +127,22 @@ Not done, and not claimed:
 
 ## Milestone 6 — tax documents
 
-- Effective-dated tax rules
-- Mushak 6.3 first, after the current NBR layout is checked
-- Other Mushak forms only after each form's purpose is verified
-- VDS and AIT kept separate from output VAT
+Done in this branch:
+
+- A source register and a Mushak 6.3 field map for the owner-confirmed PDF, with the 2026 SRO and withholding-rule index entries recorded separately from anything the gazette text has not confirmed
+- Effective-dated tax rules for output VAT, VDS, and AIT. Approved text is frozen. An amendment is a new version. Overlapping active rules for the same type and classification are rejected. A blank classification is not a wildcard. No rate is seeded, and a rule does not fill a Mushak percentage
+- Mushak 6.3 as its own document on an issued commercial invoice. Seller BIN and address come from the company profile and are snapshotted at issue. The buyer can be the invoice customer, an existing party, or a one-off name that does not create a party. Issued rows cannot be edited. Void keeps the row. The PDF is private
+- A typed VAT percentage, including an explicit zero. A blank percentage does not calculate. VAT and the VAT-inclusive final amount calculate from that percentage. Editing the final amount reverse-calculates the base and keeps the percentage and the adjustment. `final = base + VAT + adjustment`. Precision 2, 3, or 4 and the selected rounding method are stored. A signed rounding adjustment is separate from VAT. BDT on the form is shown at two decimal places
+- VDS and AIT records in both directions, with typed basis and amount. They are not added to output VAT. No Mushak 6.6 or withholding certificate is generated, because those forms were not verified
+
+Not done, and not claimed:
+
+- A statutory VAT rate, exemption, threshold, or specific-tax amount
+- NBR compliance of a calculated document
+- Mushak 6.6, or any other Mushak form
+- An official VDS or AIT certificate
+- Journals, receivables, payables, receipts, or payments
+- Email, filing, or deployment
 
 ## Milestone 7 — accounting
 

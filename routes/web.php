@@ -10,8 +10,10 @@ use App\Http\Controllers\CompanyDocumentController;
 use App\Http\Controllers\CompanyDocumentDownloadController;
 use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\DocumentCategoryController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MushakInvoiceController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
@@ -22,6 +24,7 @@ use App\Http\Controllers\QuotationShareController;
 use App\Http\Controllers\QuotationWorkflowController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
+use App\Http\Controllers\TaxRuleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -359,4 +362,103 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])
         ->middleware('permission:invoices.pdf')
         ->name('invoices.pdf');
+
+    Route::get('/tax/rules', [TaxRuleController::class, 'index'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax.rules.index');
+    Route::get('/tax/rules/create', [TaxRuleController::class, 'create'])
+        ->middleware('permission:tax_rules.create')
+        ->name('tax.rules.create');
+    Route::post('/tax/rules', [TaxRuleController::class, 'store'])
+        ->middleware('permission:tax_rules.create')
+        ->name('tax.rules.store');
+    Route::get('/tax/rules/{rule}', [TaxRuleController::class, 'show'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax.rules.show');
+    Route::get('/tax/rules/{rule}/edit', [TaxRuleController::class, 'edit'])
+        ->middleware('permission:tax_rules.update')
+        ->name('tax.rules.edit');
+    Route::put('/tax/rules/{rule}', [TaxRuleController::class, 'update'])
+        ->middleware('permission:tax_rules.update')
+        ->name('tax.rules.update');
+    Route::post('/tax/rules/{rule}/approve', [TaxRuleController::class, 'approve'])
+        ->middleware('permission:tax_rules.approve')
+        ->name('tax.rules.approve');
+    Route::post('/tax/rules/{rule}/retire', [TaxRuleController::class, 'retire'])
+        ->middleware('permission:tax_rules.retire')
+        ->name('tax.rules.retire');
+    Route::post('/tax/rules/{rule}/amend', [TaxRuleController::class, 'amend'])
+        ->middleware('permission:tax_rules.update')
+        ->name('tax.rules.amend');
+
+    Route::get('/tax/mushak', [MushakInvoiceController::class, 'index'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.index');
+    Route::get('/tax/mushak/create', [MushakInvoiceController::class, 'create'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.create');
+    Route::post('/tax/mushak', [MushakInvoiceController::class, 'store'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.store');
+    Route::get('/tax/mushak/{mushak}', [MushakInvoiceController::class, 'show'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.show');
+    Route::get('/tax/mushak/{mushak}/edit', [MushakInvoiceController::class, 'edit'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.edit');
+    Route::put('/tax/mushak/{mushak}', [MushakInvoiceController::class, 'update'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.update');
+    Route::post('/tax/mushak/{mushak}/issue', [MushakInvoiceController::class, 'issue'])
+        ->middleware('permission:mushak.issue')
+        ->name('mushak.issue');
+    Route::post('/tax/mushak/{mushak}/void', [MushakInvoiceController::class, 'void'])
+        ->middleware('permission:mushak.void')
+        ->name('mushak.void');
+    Route::get('/tax/mushak/{mushak}/pdf', [MushakInvoiceController::class, 'pdf'])
+        ->middleware('permission:mushak.pdf')
+        ->name('mushak.pdf');
+
+    Route::get('/tax/{kind}', [DeductionController::class, 'index'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->middleware('permission:vds.view,ait.view')
+        ->name('deductions.index');
+    Route::get('/tax/{kind}/create', [DeductionController::class, 'create'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->middleware('permission:vds.create,ait.create')
+        ->name('deductions.create');
+    Route::post('/tax/{kind}', [DeductionController::class, 'store'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->middleware('permission:vds.create,ait.create')
+        ->name('deductions.store');
+    Route::get('/tax/{kind}/{record}', [DeductionController::class, 'show'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->whereNumber('record')
+        ->middleware('permission:vds.view,ait.view')
+        ->name('deductions.show');
+    Route::get('/tax/{kind}/{record}/edit', [DeductionController::class, 'edit'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->whereNumber('record')
+        ->middleware('permission:vds.update,ait.update')
+        ->name('deductions.edit');
+    Route::put('/tax/{kind}/{record}', [DeductionController::class, 'update'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->whereNumber('record')
+        ->middleware('permission:vds.update,ait.update')
+        ->name('deductions.update');
+    Route::post('/tax/{kind}/{record}/record', [DeductionController::class, 'record'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->whereNumber('record')
+        ->middleware('permission:vds.update,ait.update')
+        ->name('deductions.record');
+    Route::post('/tax/{kind}/{record}/void', [DeductionController::class, 'void'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->whereNumber('record')
+        ->middleware('permission:vds.void,ait.void')
+        ->name('deductions.void');
+    Route::get('/tax/{kind}/{record}/pdf', [DeductionController::class, 'pdf'])
+        ->whereIn('kind', ['vds', 'ait'])
+        ->whereNumber('record')
+        ->middleware('permission:vds.view,ait.view')
+        ->name('deductions.pdf');
 });

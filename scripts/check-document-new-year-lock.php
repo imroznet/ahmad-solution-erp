@@ -347,6 +347,7 @@ function documentYearRollback(string $series, string $expected): string
  */
 function documentYearWorker(array $argv): void
 {
+    documentYearSetEnv('ASL_DOCUMENT_ALLOCATION_DELAY', '1');
     $series = documentYearArgument($argv, 'series');
     $documentId = (int) documentYearArgument($argv, 'document');
     $userId = (int) documentYearArgument($argv, 'user');

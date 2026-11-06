@@ -176,11 +176,41 @@ jobs:
           upgraded_document_manager=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='document-manager' AND p.permission_group IN ('Challans', 'Invoices')" asl_upgrade)
           test "$upgraded_document_manager" = "0"
           DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction
-          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_line_history CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_line_history.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          for path in database/migrations/*.php; do
+            case "$(basename "$path")" in
+              *100003*) continue ;;
+            esac
+            DB_DATABASE=asl_line_history php artisan migrate --force --no-interaction --path="$path"
+          done
+          DB_DATABASE=asl_line_history php artisan db:seed --force --no-interaction
+          history_before=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_line_history' AND TABLE_NAME='delivery_challan_lines' AND COLUMN_NAME='superseded_at'" )
+          test "$history_before" = "0"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_line_history < deploy/upgrade-delivery-documents-module.sql
+          history_after=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_line_history' AND TABLE_NAME='delivery_challan_lines' AND COLUMN_NAME='superseded_at'" )
+          test "$history_after" = "1"
+          invoice_history=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='asl_line_history' AND TABLE_NAME='commercial_invoice_lines' AND INDEX_NAME='commercial_invoice_lines_current_challan_unique' AND SEQ_IN_INDEX=1" )
+          test "$invoice_history" = "1"
+          old_challan_index=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='asl_line_history' AND TABLE_NAME='delivery_challan_lines' AND INDEX_NAME='delivery_challan_lines_challan_position_unique'" )
+          test "$old_challan_index" = "0"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_line_history <<'SQL'
+          DELETE FROM permission_role WHERE role_id = (SELECT id FROM roles WHERE slug = 'sales-executive') AND permission_id = (SELECT id FROM permissions WHERE slug = 'challans.view');
+          INSERT INTO permission_role (role_id, permission_id)
+          SELECT r.id, p.id FROM roles r JOIN permissions p ON p.slug = 'challans.view' WHERE r.slug = 'document-manager';
+          SQL
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_line_history < deploy/upgrade-delivery-documents-module.sql
+          history_sales=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='challans.view'" asl_line_history)
+          test "$history_sales" = "1"
+          history_custom=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='document-manager' AND p.slug='challans.view'" asl_line_history)
+          test "$history_custom" = "1"
+          history_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_07_100003_preserve_delivery_document_line_history'" asl_line_history)
+          test "$history_migration" = "1"
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_quantity_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_quantity_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           DB_DATABASE=asl_quotation_lock php scripts/check-quotation-number-lock.php
           DB_DATABASE=asl_quotation_year php scripts/check-quotation-new-year-lock.php
           DB_DATABASE=asl_quotation_totals php scripts/check-quotation-total-bounds.php
           DB_DATABASE=asl_document_year php scripts/check-document-new-year-lock.php
+          DB_DATABASE=asl_document_quantity_lock php scripts/check-document-quantity-lock.php
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

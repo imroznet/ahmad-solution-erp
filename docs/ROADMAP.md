@@ -127,10 +127,27 @@ Not done, and not claimed:
 
 ## Milestone 6 — tax documents
 
-- Effective-dated tax rules
-- Mushak 6.3 first, after the current NBR layout is checked
-- Other Mushak forms only after each form's purpose is verified
-- VDS and AIT kept separate from output VAT
+Done in this branch:
+
+- A source register and a Mushak 6.3 field map for the owner-confirmed form file, with the file checksum. Index dates for the 2026 VAT SROs and the Withholding Tax Rules, 2026 are recorded as index dates. Their gazette bodies were not read, so no statutory rate is seeded.
+- Effective-dated tax rules for output VAT, VDS, and AIT. Approved windows on one rule cannot overlap. The end date is inclusive. An approved version is not rewritten. A later amendment is a new version. Nothing in the rule record is copied onto a document as a rate.
+- Mushak 6.3 as its own document, linked to an issued commercial invoice. The commercial invoice stays tax-excluded.
+- A VAT percentage typed by the user. Blank does not calculate. An entered zero does. VAT and the VAT-inclusive amount are calculated from the base. Editing the VAT-inclusive amount keeps that amount to the poisha and reverse-calculates the base. Changing the percentage recalculates from the base. Decimal arithmetic only, half away from zero to two decimal places.
+- Company and buyer snapshots. Issue is blocked when the company BIN is missing. A manual buyer does not create a party.
+- Issued Mushak documents are immutable. Void keeps the row. The private PDF is permission-checked and audited.
+- VDS and AIT records in both directions, with amounts entered by the user. They are not added to output VAT. Mushak 6.6 is not generated.
+- Permissions, repeatable upgrade SQL, and the cPanel package list.
+
+Not done, and not claimed:
+
+- That any percentage is the legal rate for a supply. A document stays marked for tax review unless a user records an approved rule as their own attestation. The system still does not certify the typed percentage.
+- A Bangla reproduction of the official form. The PDF font has no Bengali script, so the labels are English in the inspected column order.
+- Mushak 6.2, 6.4, 6.5, or 6.6.
+- Whether VAT should be calculated on a base that includes supplementary duty. Supplementary duty is a separate entered amount and is not part of the VAT amount.
+- The legal effective dates of the 2026 SROs and withholding rules. Only the NBR index dates were read.
+- Credit notes, debit notes, and any statutory adjustment form. Void is the local correction.
+- Receivables, payables, journals, inventory, email, and filing a return.
+- Deployment onto `stage.ahmad.bd`
 
 ## Milestone 7 — accounting
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AitRecordController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentCategoryController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MushakController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
@@ -22,7 +24,9 @@ use App\Http\Controllers\QuotationShareController;
 use App\Http\Controllers\QuotationWorkflowController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
+use App\Http\Controllers\TaxRuleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VdsRecordController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('quotation.share:read')->group(function (): void {
@@ -359,4 +363,95 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])
         ->middleware('permission:invoices.pdf')
         ->name('invoices.pdf');
+
+    Route::get('/tax/rules', [TaxRuleController::class, 'index'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax-rules.index');
+    Route::get('/tax/rules/create', [TaxRuleController::class, 'create'])
+        ->middleware('permission:tax_rules.create')
+        ->name('tax-rules.create');
+    Route::post('/tax/rules', [TaxRuleController::class, 'store'])
+        ->middleware('permission:tax_rules.create')
+        ->name('tax-rules.store');
+    Route::get('/tax/rules/{rule}', [TaxRuleController::class, 'show'])
+        ->middleware('permission:tax_rules.view')
+        ->name('tax-rules.show');
+    Route::post('/tax/rules/{rule}/versions', [TaxRuleController::class, 'storeVersion'])
+        ->middleware('permission:tax_rules.update')
+        ->name('tax-rules.versions.store');
+    Route::post('/tax/rules/{rule}/retire', [TaxRuleController::class, 'retire'])
+        ->middleware('permission:tax_rules.retire')
+        ->name('tax-rules.retire');
+    Route::post('/tax/rules/{rule}/versions/{version}/approve', [TaxRuleController::class, 'approve'])
+        ->middleware('permission:tax_rules.approve')
+        ->name('tax-rules.versions.approve');
+    Route::post('/tax/rules/{rule}/versions/{version}/retire', [TaxRuleController::class, 'retireVersion'])
+        ->middleware('permission:tax_rules.retire')
+        ->name('tax-rules.versions.retire');
+    Route::post('/tax/rules/{rule}/versions/{version}/close', [TaxRuleController::class, 'close'])
+        ->middleware('permission:tax_rules.update')
+        ->name('tax-rules.versions.close');
+
+    Route::get('/tax/mushak', [MushakController::class, 'index'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.index');
+    Route::get('/tax/mushak/create', [MushakController::class, 'create'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.create');
+    Route::post('/tax/mushak/calculate', [MushakController::class, 'calculate'])
+        ->middleware('permission:mushak.create,mushak.update')
+        ->name('mushak.calculate');
+    Route::post('/tax/mushak', [MushakController::class, 'store'])
+        ->middleware('permission:mushak.create')
+        ->name('mushak.store');
+    Route::get('/tax/mushak/{mushak}', [MushakController::class, 'show'])
+        ->middleware('permission:mushak.view')
+        ->name('mushak.show');
+    Route::get('/tax/mushak/{mushak}/edit', [MushakController::class, 'edit'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.edit');
+    Route::put('/tax/mushak/{mushak}', [MushakController::class, 'update'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.update');
+    Route::post('/tax/mushak/{mushak}/issue', [MushakController::class, 'issue'])
+        ->middleware('permission:mushak.issue')
+        ->name('mushak.issue');
+    Route::post('/tax/mushak/{mushak}/void', [MushakController::class, 'void'])
+        ->middleware('permission:mushak.void')
+        ->name('mushak.void');
+    Route::get('/tax/mushak/{mushak}/pdf', [MushakController::class, 'pdf'])
+        ->middleware('permission:mushak.pdf')
+        ->name('mushak.pdf');
+
+    Route::get('/tax/vds', [VdsRecordController::class, 'index'])
+        ->middleware('permission:vds.view')
+        ->name('vds.index');
+    Route::get('/tax/vds/create', [VdsRecordController::class, 'create'])
+        ->middleware('permission:vds.create')
+        ->name('vds.create');
+    Route::post('/tax/vds', [VdsRecordController::class, 'store'])
+        ->middleware('permission:vds.create')
+        ->name('vds.store');
+    Route::get('/tax/vds/{vds}', [VdsRecordController::class, 'show'])
+        ->middleware('permission:vds.view')
+        ->name('vds.show');
+    Route::post('/tax/vds/{vds}/void', [VdsRecordController::class, 'void'])
+        ->middleware('permission:vds.void')
+        ->name('vds.void');
+
+    Route::get('/tax/ait', [AitRecordController::class, 'index'])
+        ->middleware('permission:ait.view')
+        ->name('ait.index');
+    Route::get('/tax/ait/create', [AitRecordController::class, 'create'])
+        ->middleware('permission:ait.create')
+        ->name('ait.create');
+    Route::post('/tax/ait', [AitRecordController::class, 'store'])
+        ->middleware('permission:ait.create')
+        ->name('ait.store');
+    Route::get('/tax/ait/{ait}', [AitRecordController::class, 'show'])
+        ->middleware('permission:ait.view')
+        ->name('ait.show');
+    Route::post('/tax/ait/{ait}/void', [AitRecordController::class, 'void'])
+        ->middleware('permission:ait.void')
+        ->name('ait.void');
 });

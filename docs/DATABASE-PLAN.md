@@ -106,13 +106,16 @@ A challan is not a tax invoice. A commercial invoice is not a Mushak form. An is
 
 ### Tax
 
-- `tax_rules` with type, rate, start date, end date, supply type, legal reference, notes, and active flag
-- `mushak_documents`
-- `mushak_document_items`
-- `vds_certificates`
-- `ait_records`
+These tables are created by the tax migration.
 
-Mushak 6.3, 6.4, 6.5, 6.6, and 6.2 are different documents. The application will not use one generic form for all of them. VAT, VDS, and AIT stay in separate records. No rate is seeded as a statutory default until the current NBR rule is identified and dated.
+- `tax_rules` identifies one rule: code, tax type (`output_vat`, `vds`, or `ait`), name, and active or retired status.
+- `tax_rule_versions` is the immutable history. `effective_from` is inclusive and `effective_to` is inclusive when set. A null end is open-ended. Approved versions of the same rule cannot overlap. A stored percentage is informational. It is not copied onto a document.
+- `mushak_63_documents` is a Mushak 6.3 linked to one commercial invoice. A generated column allows one non-void document per invoice. The buyer, company, invoice number, and any selected rule version are snapshotted. `vat_total` stays null until every line has a typed percentage.
+- `mushak_63_lines` stores quantity, unit price, base, the typed VAT percentage, the calculated VAT amount, the VAT-inclusive amount, and an optional supplementary-duty amount. A draft edit keeps the previous line and sets `superseded_at`.
+- `mushak_63_events` records issue and void.
+- `vds_records` and `ait_records` store a direction, a counterparty, a basis, and an amount entered by the user. They do not feed the Mushak VAT total.
+
+Mushak 6.3, 6.4, 6.5, 6.6, and 6.2 are different documents. Only 6.3 is implemented. No rate is seeded.
 
 ### Accounting
 

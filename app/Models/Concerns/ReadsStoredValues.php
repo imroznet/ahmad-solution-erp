@@ -11,6 +11,32 @@ trait ReadsStoredValues
         return is_string($value) ? $value : '';
     }
 
+    public function dateString(string $key): ?string
+    {
+        $value = $this->getAttribute($key);
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1) {
+            return substr($value, 0, 10);
+        }
+
+        return null;
+    }
+
+    public function dateTimeString(string $key): ?string
+    {
+        $value = $this->getAttribute($key);
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format(\DateTimeInterface::ATOM);
+        }
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
     public function decimalAttribute(string $key): string
     {
         $value = $this->getAttribute($key);

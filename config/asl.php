@@ -61,6 +61,18 @@ return [
         'notice' => 'This is a commercial invoice. Tax is excluded and is not calculated. This document is not a tax invoice or a Mushak form.',
     ],
 
+    /*
+    | Mushak 6.3. The percentage is entered by the user. Amounts are calculated
+    | from that percentage. No statutory rate is configured here.
+    */
+    'mushak' => [
+        'number_prefix' => 'M63',
+        'form_source_url' => 'https://dknvat.gov.bd/assets/document/form/form_175068235417Xz9DmBrT9uc6V.pdf',
+        'form_sha256' => 'c09e853829e19a6265d82b53b0f4408c9db95ca8793fa1666cec39c6870cf5a2',
+        'form_checked_on' => '2026-11-06',
+        'vat_notice' => 'The VAT percentage on each line was entered by an authorised user. VAT amounts and VAT-inclusive amounts are calculated from that percentage and the line base. This system does not decide whether the percentage is legally applicable. Supplementary duty, VDS, and income-tax withholding are not part of the VAT amount. This document is not an NBR compliance certificate.',
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

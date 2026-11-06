@@ -5,6 +5,9 @@
             <p class="mt-1 text-sm text-muted">{{ $invoice->party_legal_name }} · {{ $invoice->statusLabel() }} · {{ $invoice->quotation?->number }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
+            @if ($invoice->stringAttribute('status') === 'issued' && auth()->user()?->hasPermission('mushak.create'))
+                <a href="{{ route('mushak.create', ['invoice' => $invoice->id]) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">Prepare Mushak 6.3</a>
+            @endif
             @if ($canPdf)
                 <a href="{{ route('invoices.pdf', $invoice) }}" class="rounded border border-line bg-white px-3 py-2 text-sm">PDF</a>
             @endif

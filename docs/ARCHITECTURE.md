@@ -92,6 +92,12 @@ The PDF is rendered by `dompdf/dompdf` when an authorized user or a valid share 
 
 The application timezone is `Asia/Dhaka`. The default currency is BDT. Display grouping is the western three-digit form. Lakh and crore grouping is not applied until the company confirms it.
 
+## Tax documents
+
+Mushak 6.3 is a separate document from the commercial invoice. The invoice remains tax-excluded. The VAT percentage on a Mushak line is typed. A blank percentage does not calculate. An explicit zero does. VAT is round(base × rate / 100, 2), half away from zero, and the VAT-inclusive amount is base plus VAT. Editing the VAT-inclusive amount keeps that amount exactly and sets VAT to the residual after the base is rounded. Changing the percentage recalculates from the base. Supplementary duty, VDS, and AIT are not part of that VAT amount.
+
+An issued Mushak freezes its snapshots. A later rule version does not change it. The private PDF is rendered on request and is not stored under `public/`.
+
 ## What is deliberately absent
 
-Mushak forms, VDS, AIT, receivables, payables, and journals are specified in the database plan and are not tables yet. There will be no product, stock, or warehouse tables. A delivery challan and a commercial invoice copy the customer from the accepted quotation. They do not store a separate party key. A quotation, a challan, and a commercial invoice remain different documents.
+Receivables, payables, and journals are specified in the database plan and are not tables yet. Mushak 6.6 and the other Mushak forms are not implemented. There will be no product, stock, or warehouse tables. A delivery challan and a commercial invoice copy the customer from the accepted quotation. They do not store a separate party key. A quotation, a challan, a commercial invoice, and a Mushak 6.3 remain different documents.

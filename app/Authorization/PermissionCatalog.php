@@ -146,7 +146,7 @@ final class PermissionCatalog
                 'id' => 3,
                 'name' => 'Accounts Manager',
                 'slug' => 'accounts-manager',
-                'description' => 'Views the company profile and legal documents, manages customers and suppliers, and can approve a quotation prepared by someone else. Can prepare and void delivery challans and commercial invoices. Broader accounting permissions are added with that module.',
+                'description' => 'Views the company profile and legal documents, manages customers and suppliers, and can approve a quotation prepared by someone else. Can prepare and void challans and commercial invoices. Broader accounting permissions are added with that module.',
                 'permissions' => [
                     'dashboard.view',
                     'company.view',

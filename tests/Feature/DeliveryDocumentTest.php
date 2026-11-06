@@ -2,14 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Documents\DocumentBalance;
 use App\Documents\DocumentNumberAllocator;
 use App\Documents\DocumentPdfRenderer;
 use App\Documents\DocumentStatus;
+use App\Models\AuditLog;
 use App\Models\CommercialInvoice;
 use App\Models\CommercialInvoiceLine;
 use App\Models\CompanyProfile;
 use App\Models\DeliveryChallan;
 use App\Models\DeliveryChallanEvent;
+use App\Models\DeliveryChallanLine;
 use App\Models\Party;
 use App\Models\Quotation;
 use App\Models\QuotationLine;
@@ -281,6 +284,105 @@ class DeliveryDocumentTest extends TestCase
 
         $this->actingAs($sales)->get(route('challans.edit', $challan))->assertForbidden();
         $this->actingAs($sales)->put(route('challans.update', $challan), $this->challanPayload($quotation, '1'))->assertForbidden();
+    }
+
+    public function test_draft_edits_keep_every_previous_line(): void
+    {
+        [$sales, $manager, $customer] = $this->team();
+        $quotation = $this->acceptedQuotation($sales, $manager, $customer);
+        $line = $quotation->currentRevision?->lines()->firstOrFail();
+        $this->assertInstanceOf(QuotationLine::class, $line);
+        $this->actingAs($sales)->post('/challans', $this->challanPayload($quotation, '2'))->assertRedirect();
+        $challan = DeliveryChallan::query()->firstOrFail();
+        $this->actingAs($sales)->put(route('challans.update', $challan), $this->challanPayload($quotation, '1'))->assertRedirect();
+        $this->actingAs($sales)->put(route('challans.update', $challan), $this->challanPayload($quotation, '1.5'))->assertRedirect();
+
+        $history = DeliveryChallanLine::withoutGlobalScope('current')
+            ->where('delivery_challan_id', $challan->getKey())
+            ->orderBy('id')
+            ->get();
+        $this->assertCount(3, $history);
+        $this->assertSame(['2.0000', '1.0000', '1.5000'], $history->map(fn (DeliveryChallanLine $row): string => $row->decimalAttribute('quantity'))->all());
+        $this->assertNotNull($history[0]->getAttribute('superseded_at'));
+        $this->assertNotNull($history[1]->getAttribute('superseded_at'));
+        $this->assertNull($history[2]->getAttribute('superseded_at'));
+        $this->assertSame((int) $sales->getKey(), (int) $history[0]->getAttribute('superseded_by'));
+        $this->assertSame((int) $sales->getKey(), (int) $history[1]->getAttribute('superseded_by'));
+        $originalStamp = (string) $history[0]->getRawOriginal('superseded_at');
+        $this->assertFalse($history[0]->delete());
+        $this->assertFalse($history[2]->delete());
+
+        try {
+            $history[0]->setAttribute('quantity', '9.0000');
+            $history[0]->save();
+            $this->fail('A superseded challan line was changed.');
+        } catch (LogicException $exception) {
+            $this->assertStringContainsString('superseded', $exception->getMessage());
+        }
+
+        $history[0]->refresh();
+        $this->assertSame('2.0000', $history[0]->decimalAttribute('quantity'));
+        $this->assertSame($originalStamp, (string) $history[0]->getRawOriginal('superseded_at'));
+        $challan->refresh();
+        $this->assertCount(1, $challan->lines);
+        $this->assertSame('1.5000', $challan->lines->first()?->decimalAttribute('quantity'));
+        $rendered = app(DocumentPdfRenderer::class)->challanData($challan);
+        $this->assertCount(1, $rendered['challan']->lines);
+
+        $audits = AuditLog::query()->where('event', 'delivery_challan_updated')->orderBy('id')->get();
+        $this->assertCount(2, $audits);
+        $firstOld = $audits[0]->getAttribute('old_values');
+        $secondNew = $audits[1]->getAttribute('new_values');
+        $secondOld = $audits[1]->getAttribute('old_values');
+        $this->assertIsArray($firstOld);
+        $this->assertIsArray($secondNew);
+        $this->assertIsArray($secondOld);
+        $this->assertSame('2.0000', $firstOld['lines'][0]['quantity']);
+        $this->assertSame((int) $history[0]->getKey(), $firstOld['lines'][0]['id']);
+        $this->assertSame([(int) $history[1]->getKey()], $secondNew['superseded_line_ids']);
+        $this->assertSame('1.0000', $secondOld['lines'][0]['quantity']);
+        $this->assertSame('1.5000', $secondNew['lines'][0]['quantity']);
+        $encoded = json_encode($secondOld).json_encode($secondNew);
+        $this->assertIsString($encoded);
+        $this->assertStringNotContainsString('SECRET-NOTE', $encoded);
+
+        $this->actingAs($sales)->post(route('challans.issue', $challan))->assertRedirect();
+        $this->assertSame('1.5000', app(DocumentBalance::class)->deliveredQuantity((int) $line->getKey(), null));
+        $this->assertCount(3, DeliveryChallanLine::withoutGlobalScope('current')->where('delivery_challan_id', $challan->getKey())->get());
+        $challan->refresh();
+        $this->assertCount(1, $challan->lines);
+
+        $this->actingAs($sales)->post('/invoices', $this->invoiceFromChallan($quotation, $challan, '1.5'))->assertRedirect();
+        $invoice = CommercialInvoice::query()->firstOrFail();
+        $this->actingAs($sales)->put(route('invoices.update', $invoice), $this->invoiceFromChallan($quotation, $challan, '1'))->assertRedirect();
+        $this->actingAs($sales)->put(route('invoices.update', $invoice), $this->invoiceFromChallan($quotation, $challan, '0.5'))->assertRedirect();
+        $invoiceLines = CommercialInvoiceLine::withoutGlobalScope('current')
+            ->where('commercial_invoice_id', $invoice->getKey())
+            ->orderBy('id')
+            ->get();
+        $this->assertCount(3, $invoiceLines);
+        $this->assertSame(
+            ['1.5000', '1.0000', '0.5000'],
+            $invoiceLines->map(fn (CommercialInvoiceLine $row): string => $row->decimalAttribute('quantity'))->all(),
+        );
+        $invoice->refresh();
+        $this->assertCount(1, $invoice->lines);
+        $this->assertSame('0.5000', $invoice->lines->first()?->decimalAttribute('quantity'));
+        $this->assertFalse($invoiceLines[0]->delete());
+        $invoiceLines[0]->refresh();
+        $this->assertSame('1.5000', $invoiceLines[0]->decimalAttribute('quantity'));
+
+        $invoiceAudit = AuditLog::query()->where('event', 'commercial_invoice_updated')->orderByDesc('id')->firstOrFail();
+        $invoiceNew = $invoiceAudit->getAttribute('new_values');
+        $invoiceOld = $invoiceAudit->getAttribute('old_values');
+        $this->assertIsArray($invoiceNew);
+        $this->assertIsArray($invoiceOld);
+        $this->assertSame('0.5000', $invoiceNew['lines'][0]['quantity']);
+        $this->assertSame('1.0000', $invoiceOld['lines'][0]['quantity']);
+        $this->assertSame((int) $invoiceLines[1]->getKey(), $invoiceOld['lines'][0]['id']);
+        $invoiceEncoded = json_encode($invoiceOld).json_encode($invoiceNew);
+        $this->assertIsString($invoiceEncoded);
+        $this->assertStringNotContainsString('SECRET-NOTE', $invoiceEncoded);
     }
 
     public function test_a_rolled_back_number_is_not_consumed_and_drafts_do_not_take_one(): void

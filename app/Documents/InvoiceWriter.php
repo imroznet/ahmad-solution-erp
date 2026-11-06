@@ -3,6 +3,7 @@
 namespace App\Documents;
 
 use App\Models\CommercialInvoice;
+use App\Models\CommercialInvoiceLine;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\Money;
@@ -47,8 +48,8 @@ final class InvoiceWriter
                 'currency_code' => Money::DEFAULT_CURRENCY,
                 'created_by' => $actor->getKey(),
             ]);
-            $this->replaceLines($invoice, $prepared);
-            $this->audit->record('commercial_invoice_created', $invoice, newValues: $this->payload($invoice), actor: $actor);
+            [, $current] = $this->replaceLines($invoice, $actor, $prepared);
+            $this->audit->record('commercial_invoice_created', $invoice, newValues: $this->payload($invoice, $current), actor: $actor);
 
             return $invoice;
         }, 'commercial_invoices');
@@ -83,8 +84,14 @@ final class InvoiceWriter
                 'subtotal' => $total,
                 'total' => $total,
             ])->save();
-            $this->replaceLines($invoice, $prepared);
-            $this->audit->record('commercial_invoice_updated', $invoice, newValues: $this->payload($invoice->refresh()), actor: $actor);
+            [$superseded, $current] = $this->replaceLines($invoice, $actor, $prepared);
+            $this->audit->record(
+                'commercial_invoice_updated',
+                $invoice,
+                oldValues: ['lines' => $superseded],
+                newValues: $this->payload($invoice->refresh(), $current, $superseded),
+                actor: $actor,
+            );
 
             return $invoice;
         }, 'commercial_invoices');
@@ -93,21 +100,51 @@ final class InvoiceWriter
     }
 
     /**
+     * The previous rows stay in the table. They are marked superseded and are
+     * left out of the current-line relation.
+     *
      * @param  list<array{delivery_challan_line_id: int, quotation_line_id: int, position: int, description: string, unit: string, quantity: string, unit_price: string, line_total: string}>  $lines
+     * @return array{0: list<array<string, int|string>>, 1: list<array<string, int|string>>}
      */
-    private function replaceLines(CommercialInvoice $invoice, array $lines): void
+    private function replaceLines(CommercialInvoice $invoice, User $actor, array $lines): array
     {
         $this->assertDraft($invoice);
+        $superseded = [];
 
         foreach ($invoice->lines()->get() as $existing) {
-            if ($existing->delete() !== true) {
-                throw new DocumentRuleException('lines', 'Draft lines could not be replaced.');
-            }
+            $superseded[] = $this->snapshot($existing);
+            $existing->setAttribute('superseded_at', now());
+            $existing->setAttribute('superseded_by', $actor->getKey());
+            $existing->save();
         }
 
+        $current = [];
+
         foreach ($lines as $line) {
-            $invoice->lines()->create($line);
+            $created = $invoice->lines()->create($line);
+            $current[] = $this->snapshot($created);
         }
+
+        return [$superseded, $current];
+    }
+
+    /**
+     * @return array<string, int|string>
+     */
+    private function snapshot(CommercialInvoiceLine $line): array
+    {
+        return [
+            'id' => (int) $line->getKey(),
+            'commercial_invoice_id' => (int) $line->getAttribute('commercial_invoice_id'),
+            'delivery_challan_line_id' => (int) $line->getAttribute('delivery_challan_line_id'),
+            'quotation_line_id' => (int) $line->getAttribute('quotation_line_id'),
+            'position' => (int) $line->getAttribute('position'),
+            'description' => $line->stringAttribute('description'),
+            'unit' => $line->stringAttribute('unit'),
+            'quantity' => $line->decimalAttribute('quantity'),
+            'unit_price' => $line->decimalAttribute('unit_price'),
+            'line_total' => $line->decimalAttribute('line_total'),
+        ];
     }
 
     private function assertDraft(CommercialInvoice $invoice): void
@@ -127,9 +164,11 @@ final class InvoiceWriter
     }
 
     /**
+     * @param  list<array<string, int|string>>  $lines
+     * @param  list<array<string, int|string>>  $superseded
      * @return array<string, mixed>
      */
-    private function payload(CommercialInvoice $invoice): array
+    private function payload(CommercialInvoice $invoice, array $lines, array $superseded = []): array
     {
         return [
             'number' => $invoice->displayNumber(),
@@ -139,7 +178,10 @@ final class InvoiceWriter
             'total' => $invoice->decimalAttribute('total'),
             'currency_code' => $invoice->stringAttribute('currency_code'),
             'tax_treatment' => $invoice->stringAttribute('tax_treatment'),
-            'line_count' => $invoice->lines()->count(),
+            'line_count' => count($lines),
+            'line_ids' => array_map(fn (array $line): int => (int) $line['id'], $lines),
+            'superseded_line_ids' => array_map(fn (array $line): int => (int) $line['id'], $superseded),
+            'lines' => $lines,
         ];
     }
 }

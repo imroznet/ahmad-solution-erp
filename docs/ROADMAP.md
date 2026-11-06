@@ -109,7 +109,8 @@ Done in this branch:
 - A commercial invoice against that quotation and one or more issued challans. Each invoice line points at the challan line and the quotation line, so the delivered quantity can be traced
 - Staged invoicing. Issued quantities cannot pass the delivered quantity, and issued amounts stay within the accepted line and quotation totals, including the remainder left by earlier rounding
 - `DC-{Asia/Dhaka year}-{sequence}` and `CI-{year}-{sequence}` numbers allocated when the document is issued. A draft has no number. A failed issue does not consume the number
-- Issued content and the company snapshot stay as they were. A controlled void keeps the document. A challan used by a draft or issued invoice cannot be voided until those invoices are voided
+- Issued content and the company snapshot stay as they were. A controlled void keeps the document. A challan whose current lines are used by a draft or issued invoice cannot be voided until those invoices are voided
+- A draft edit keeps every previous line row, with the actor and time, and the update audit stores both line sets. Current totals and PDFs use only the latest lines
 
 Not done, and not claimed:
 

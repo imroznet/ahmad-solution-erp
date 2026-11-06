@@ -78,14 +78,14 @@ These tables are created by `2026_11_07_100001_create_delivery_document_tables`.
 | --- | --- |
 | `delivery_challan_number_sequences` | One locked counter per Asia/Dhaka calendar year. The row is inserted with `INSERT IGNORE` before `FOR UPDATE`. |
 | `delivery_challans` | Header. `number` is null until issue. Customer text is copied from the accepted revision. `company_snapshot` is filled at issue. |
-| `delivery_challan_lines` | One row per quotation line on that challan. Quantity and the accepted quantity are `DECIMAL(16,4)`. Unique on `(delivery_challan_id, position)` and `(delivery_challan_id, quotation_line_id)`. |
+| `delivery_challan_lines` | One row per quotation line on that challan, including rows superseded by a later draft edit. Quantity and the accepted quantity are `DECIMAL(16,4)`. `superseded_at` and `superseded_by` mark a replaced row. Current uniqueness uses stored generated columns that are null once a row is superseded: `(delivery_challan_id, active_position)` and `(delivery_challan_id, active_quotation_line_id)`. |
 | `delivery_challan_events` | Issue, dispatch, acknowledgment, and void. Dispatch and acknowledgment are events, not statuses. |
 | `commercial_invoice_number_sequences` | Separate year counter for commercial invoices. |
 | `commercial_invoices` | Header. `subtotal` and `total` are `DECIMAL(18,2)`. `tax_treatment` is `excluded`. |
-| `commercial_invoice_lines` | One row per challan line on that invoice. `delivery_challan_line_id` and `quotation_line_id` are both stored. Quantity is `DECIMAL(16,4)`, unit price `DECIMAL(16,2)`, and line total `DECIMAL(18,2)`. |
+| `commercial_invoice_lines` | One row per challan line on that invoice, including rows superseded by a later draft edit. `delivery_challan_line_id` and `quotation_line_id` are both stored. Quantity is `DECIMAL(16,4)`, unit price `DECIMAL(16,2)`, and line total `DECIMAL(18,2)`. Current uniqueness uses `(commercial_invoice_id, active_position)` and `(commercial_invoice_id, active_challan_line_id)`. |
 | `commercial_invoice_events` | Issue and void. |
 
-Status is `draft`, `issued`, or `voided`. Only `issued` counts as delivered or invoiced. A voided document keeps its number and its rows. The application does not hard-delete these tables' rows. Foreign keys restrict deletes.
+Status is `draft`, `issued`, or `voided`. Only `issued` counts as delivered or invoiced, and only lines with `superseded_at` null are included. A voided document keeps its number and its rows. A draft edit keeps the previous line row. The application does not hard-delete these tables' rows. Foreign keys restrict deletes. `2026_11_07_100003_preserve_delivery_document_line_history` adds the history columns to tables created by the first version of this module.
 
 The lock order inside a transaction is the quotation, then the challans in ascending id, then the invoice, and the year sequence last and only during issue. A draft save checks the issued totals so the user sees the limit early. Issue checks them again. Two drafts may each be saved for the full remainder because a draft does not reserve quantity.
 

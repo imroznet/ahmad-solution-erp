@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Documents\DocumentStatus;
+use App\Models\Concerns\HidesSupersededLines;
 use App\Models\Concerns\ReadsStoredValues;
 use App\Quotations\QuotationCalculator;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,7 @@ use LogicException;
 ])]
 class DeliveryChallanLine extends Model
 {
+    use HidesSupersededLines;
     use ReadsStoredValues;
 
     public $timestamps = false;
@@ -28,15 +30,25 @@ class DeliveryChallanLine extends Model
     protected static function booted(): void
     {
         static::updating(function (DeliveryChallanLine $line): void {
+            if ($line->getOriginal('superseded_at') !== null) {
+                throw new LogicException('A superseded delivery challan line cannot be changed.');
+            }
+
             $status = $line->challan()->value('status');
 
             if ($status !== DocumentStatus::DRAFT) {
                 throw new LogicException('An issued delivery challan line cannot be changed.');
             }
+
+            $forbidden = array_values(array_diff(array_keys($line->getDirty()), ['superseded_at', 'superseded_by']));
+
+            if ($forbidden !== []) {
+                throw new LogicException('A delivery challan line cannot be edited in place.');
+            }
         });
 
-        static::deleting(function (DeliveryChallanLine $line): bool {
-            return $line->challan()->value('status') === DocumentStatus::DRAFT;
+        static::deleting(function (): bool {
+            return false;
         });
     }
 
@@ -49,6 +61,7 @@ class DeliveryChallanLine extends Model
             'position' => 'integer',
             'quantity' => 'decimal:4',
             'accepted_quantity' => 'decimal:4',
+            'superseded_at' => 'datetime',
         ];
     }
 

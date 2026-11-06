@@ -2,6 +2,7 @@
 -- Use this when the quotation tables are already imported and these document tables are not.
 -- A clean database should import mysql-schema.sql, reference-data.sql, and company-reference-data.sql instead.
 -- This script creates the challan and commercial invoice tables, adds their permissions, and grants the default role set.
+-- A draft edit keeps the previous line row and marks it superseded. Current lines are the rows whose superseded_at is null.
 -- It does not delete rows, grants, or customized permissions. It is safe to import again.
 -- Importing it again restores a default grant that was removed. It does not void documents.
 -- It expects users, roles, permissions, permission_role, quotations, quotation_revisions, quotation_lines, and migrations.
@@ -93,13 +94,19 @@ CREATE TABLE IF NOT EXISTS `delivery_challan_lines` (
   `unit` varchar(40) NOT NULL,
   `quantity` decimal(16,4) NOT NULL,
   `accepted_quantity` decimal(16,4) NOT NULL,
+  `superseded_at` timestamp NULL DEFAULT NULL,
+  `superseded_by` bigint unsigned DEFAULT NULL,
+  `active_position` smallint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `position` else null end) STORED,
+  `active_quotation_line_id` bigint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `quotation_line_id` else null end) STORED,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `delivery_challan_lines_challan_position_unique` (`delivery_challan_id`, `position`),
-  UNIQUE KEY `delivery_challan_lines_challan_line_unique` (`delivery_challan_id`, `quotation_line_id`),
+  UNIQUE KEY `delivery_challan_lines_current_position_unique` (`delivery_challan_id`, `active_position`),
+  UNIQUE KEY `delivery_challan_lines_current_line_unique` (`delivery_challan_id`, `active_quotation_line_id`),
   KEY `delivery_challan_lines_delivery_challan_id_foreign` (`delivery_challan_id`),
   KEY `delivery_challan_lines_quotation_line_id_foreign` (`quotation_line_id`),
+  KEY `delivery_challan_lines_superseded_by_foreign` (`superseded_by`),
   CONSTRAINT `delivery_challan_lines_delivery_challan_id_foreign` FOREIGN KEY (`delivery_challan_id`) REFERENCES `delivery_challans` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `delivery_challan_lines_quotation_line_id_foreign` FOREIGN KEY (`quotation_line_id`) REFERENCES `quotation_lines` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `delivery_challan_lines_quotation_line_id_foreign` FOREIGN KEY (`quotation_line_id`) REFERENCES `quotation_lines` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `delivery_challan_lines_superseded_by_foreign` FOREIGN KEY (`superseded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `delivery_challan_events` (
@@ -181,15 +188,21 @@ CREATE TABLE IF NOT EXISTS `commercial_invoice_lines` (
   `quantity` decimal(16,4) NOT NULL,
   `unit_price` decimal(16,2) NOT NULL,
   `line_total` decimal(18,2) NOT NULL,
+  `superseded_at` timestamp NULL DEFAULT NULL,
+  `superseded_by` bigint unsigned DEFAULT NULL,
+  `active_position` smallint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `position` else null end) STORED,
+  `active_challan_line_id` bigint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `delivery_challan_line_id` else null end) STORED,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `commercial_invoice_lines_invoice_position_unique` (`commercial_invoice_id`, `position`),
-  UNIQUE KEY `commercial_invoice_lines_invoice_challan_unique` (`commercial_invoice_id`, `delivery_challan_line_id`),
+  UNIQUE KEY `commercial_invoice_lines_current_position_unique` (`commercial_invoice_id`, `active_position`),
+  UNIQUE KEY `commercial_invoice_lines_current_challan_unique` (`commercial_invoice_id`, `active_challan_line_id`),
   KEY `commercial_invoice_lines_commercial_invoice_id_foreign` (`commercial_invoice_id`),
   KEY `commercial_invoice_lines_delivery_challan_line_id_foreign` (`delivery_challan_line_id`),
   KEY `commercial_invoice_lines_quotation_line_id_foreign` (`quotation_line_id`),
+  KEY `commercial_invoice_lines_superseded_by_foreign` (`superseded_by`),
   CONSTRAINT `commercial_invoice_lines_commercial_invoice_id_foreign` FOREIGN KEY (`commercial_invoice_id`) REFERENCES `commercial_invoices` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `commercial_invoice_lines_delivery_challan_line_id_foreign` FOREIGN KEY (`delivery_challan_line_id`) REFERENCES `delivery_challan_lines` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `commercial_invoice_lines_quotation_line_id_foreign` FOREIGN KEY (`quotation_line_id`) REFERENCES `quotation_lines` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `commercial_invoice_lines_quotation_line_id_foreign` FOREIGN KEY (`quotation_line_id`) REFERENCES `quotation_lines` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `commercial_invoice_lines_superseded_by_foreign` FOREIGN KEY (`superseded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `commercial_invoice_events` (
@@ -206,6 +219,59 @@ CREATE TABLE IF NOT EXISTS `commercial_invoice_events` (
   CONSTRAINT `commercial_invoice_events_commercial_invoice_id_foreign` FOREIGN KEY (`commercial_invoice_id`) REFERENCES `commercial_invoices` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `commercial_invoice_events_actor_id_foreign` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Keep superseded draft lines on a database created by the first version of this file.
+SET @challan_line_history := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'delivery_challan_lines'
+    AND COLUMN_NAME = 'superseded_at'
+);
+SET @sql := IF(@challan_line_history = 0,
+  'ALTER TABLE `delivery_challan_lines` ADD COLUMN `superseded_at` timestamp NULL DEFAULT NULL, ADD COLUMN `superseded_by` bigint unsigned DEFAULT NULL, ADD COLUMN `active_position` smallint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `position` else null end) STORED, ADD COLUMN `active_quotation_line_id` bigint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `quotation_line_id` else null end) STORED, ADD UNIQUE KEY `delivery_challan_lines_current_position_unique` (`delivery_challan_id`, `active_position`), ADD UNIQUE KEY `delivery_challan_lines_current_line_unique` (`delivery_challan_id`, `active_quotation_line_id`), ADD CONSTRAINT `delivery_challan_lines_superseded_by_foreign` FOREIGN KEY (`superseded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE challan_line_history FROM @sql;
+EXECUTE challan_line_history;
+DEALLOCATE PREPARE challan_line_history;
+
+SET @challan_old_index := (
+  SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'delivery_challan_lines'
+    AND INDEX_NAME = 'delivery_challan_lines_challan_position_unique'
+);
+SET @sql := IF(@challan_old_index > 0,
+  'ALTER TABLE `delivery_challan_lines` DROP INDEX `delivery_challan_lines_challan_position_unique`, DROP INDEX `delivery_challan_lines_challan_line_unique`',
+  'SELECT 1');
+PREPARE challan_line_history_index FROM @sql;
+EXECUTE challan_line_history_index;
+DEALLOCATE PREPARE challan_line_history_index;
+
+SET @invoice_line_history := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'commercial_invoice_lines'
+    AND COLUMN_NAME = 'superseded_at'
+);
+SET @sql := IF(@invoice_line_history = 0,
+  'ALTER TABLE `commercial_invoice_lines` ADD COLUMN `superseded_at` timestamp NULL DEFAULT NULL, ADD COLUMN `superseded_by` bigint unsigned DEFAULT NULL, ADD COLUMN `active_position` smallint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `position` else null end) STORED, ADD COLUMN `active_challan_line_id` bigint unsigned GENERATED ALWAYS AS (case when `superseded_at` is null then `delivery_challan_line_id` else null end) STORED, ADD UNIQUE KEY `commercial_invoice_lines_current_position_unique` (`commercial_invoice_id`, `active_position`), ADD UNIQUE KEY `commercial_invoice_lines_current_challan_unique` (`commercial_invoice_id`, `active_challan_line_id`), ADD CONSTRAINT `commercial_invoice_lines_superseded_by_foreign` FOREIGN KEY (`superseded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE invoice_line_history FROM @sql;
+EXECUTE invoice_line_history;
+DEALLOCATE PREPARE invoice_line_history;
+
+SET @invoice_old_index := (
+  SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'commercial_invoice_lines'
+    AND INDEX_NAME = 'commercial_invoice_lines_invoice_position_unique'
+);
+SET @sql := IF(@invoice_old_index > 0,
+  'ALTER TABLE `commercial_invoice_lines` DROP INDEX `commercial_invoice_lines_invoice_position_unique`, DROP INDEX `commercial_invoice_lines_invoice_challan_unique`',
+  'SELECT 1');
+PREPARE invoice_line_history_index FROM @sql;
+EXECUTE invoice_line_history_index;
+DEALLOCATE PREPARE invoice_line_history_index;
 
 INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `description`, `created_at`, `updated_at`)
 SELECT 38, 'View delivery challans', 'challans.view', 'Challans', 'View delivery challans for customers this user is allowed to see.', NOW(), NOW() FROM DUAL
@@ -570,3 +636,7 @@ WHERE NOT EXISTS (SELECT 1 FROM (SELECT `migration` FROM `migrations`) AS `exist
 INSERT INTO `migrations` (`migration`, `batch`)
 SELECT '2026_11_07_100002_grant_delivery_document_access', COALESCE((SELECT MAX(`batch`) FROM (SELECT `batch` FROM `migrations`) AS `migration_batch`), 0) + 1 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM (SELECT `migration` FROM `migrations`) AS `existing_migrations` WHERE `existing_migrations`.`migration` = '2026_11_07_100002_grant_delivery_document_access');
+
+INSERT INTO `migrations` (`migration`, `batch`)
+SELECT '2026_11_07_100003_preserve_delivery_document_line_history', COALESCE((SELECT MAX(`batch`) FROM (SELECT `batch` FROM `migrations`) AS `migration_batch`), 0) + 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM (SELECT `migration` FROM `migrations`) AS `existing_migrations` WHERE `existing_migrations`.`migration` = '2026_11_07_100003_preserve_delivery_document_line_history');

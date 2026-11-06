@@ -18,6 +18,7 @@ final class DocumentBalance
         $query = DB::table('delivery_challan_lines as lines')
             ->join('delivery_challans as challans', 'challans.id', '=', 'lines.delivery_challan_id')
             ->where('challans.status', DocumentStatus::ISSUED)
+            ->whereNull('lines.superseded_at')
             ->where('lines.quotation_line_id', $quotationLineId);
 
         if ($exceptChallanId !== null) {
@@ -32,6 +33,7 @@ final class DocumentBalance
         $query = DB::table('commercial_invoice_lines as lines')
             ->join('commercial_invoices as invoices', 'invoices.id', '=', 'lines.commercial_invoice_id')
             ->where('invoices.status', DocumentStatus::ISSUED)
+            ->whereNull('lines.superseded_at')
             ->where('lines.delivery_challan_line_id', $challanLineId);
 
         if ($exceptInvoiceId !== null) {
@@ -73,6 +75,7 @@ final class DocumentBalance
         $query = DB::table('commercial_invoice_lines as lines')
             ->join('commercial_invoices as invoices', 'invoices.id', '=', 'lines.commercial_invoice_id')
             ->where('invoices.status', DocumentStatus::ISSUED)
+            ->whereNull('lines.superseded_at')
             ->where('lines.quotation_line_id', $quotationLineId);
 
         if ($exceptInvoiceId !== null) {

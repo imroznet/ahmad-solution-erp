@@ -48,7 +48,7 @@ There is no `company_settings` table. The single profile holds the currency, fin
 
 ## Party design
 
-The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. Receivables, payables, VDS, AIT, and journal lines are not in this schema yet. Opening balances and payments are not in this schema.
+The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. A Mushak 6.3 can point at an issued commercial invoice and copies the buyer again. VDS and AIT point at a party or store a typed counterparty. Receivables, payables, and journal lines are not in this schema yet. Opening balances and payments are not in this schema.
 
 Archived parties and closed addresses are not soft-deleted. A soft delete would hide them from status filters and from a normal foreign key. There is no delete action. Division, district, and upazila are indexed text fields so a locality can be entered without a gazetteer table.
 
@@ -93,26 +93,26 @@ An invoice line amount is the slice quantity times the accepted unit price, roun
 
 A challan with a draft or issued invoice line pointing at it cannot be voided. Voiding an invoice does not void the challan. Credit notes and debit notes are not in this schema. Void is the adjustment path for this release.
 
+## Tax rules and Mushak 6.3
+
+`tax_rules` stores output VAT, VDS, and AIT separately. `rate` is nullable and has no default. `effective_from` is inclusive and `effective_to` is inclusive. Approving a later version of the same rule key can close the previous version on the day before the new start. It does not change the previous rate. A retired rule is not selected. Nothing in the seeder inserts a rule.
+
+`mushak_documents` and `mushak_document_lines` are the Mushak 6.3. `vat_rate` is nullable. A blank percentage is null, not zero. `rate_determined_by_erp` is stored false and a check in the application rejects true. The commercial invoice is an optional foreign key. Issuing copies the company profile, the buyer, and the source references into the row. A draft edit keeps the previous line and marks it superseded.
+
+`vds_records` and `ait_records` are separate tables. Each stores a typed `deducted_amount`. Neither table has a VAT amount column. A row may point at a Mushak or a commercial invoice. That link does not add the amount to the Mushak VAT total.
+
+The field map and the open legal questions are in `docs/tax/`.
+
 ## Planned tables
 
 These tables are not created yet.
 
-### Adjustments and tax
+### Adjustments
 
 - `credit_notes`
 - `debit_notes`
 
-A challan is not a tax invoice. A commercial invoice is not a Mushak form. An issued invoice is not edited in place. A later credit or debit note would be a new document. It is not built yet.
-
-### Tax
-
-- `tax_rules` with type, rate, start date, end date, supply type, legal reference, notes, and active flag
-- `mushak_documents`
-- `mushak_document_items`
-- `vds_certificates`
-- `ait_records`
-
-Mushak 6.3, 6.4, 6.5, 6.6, and 6.2 are different documents. The application will not use one generic form for all of them. VAT, VDS, and AIT stay in separate records. No rate is seeded as a statutory default until the current NBR rule is identified and dated.
+A challan is not a tax invoice. A commercial invoice is not a Mushak form. An issued invoice is not edited in place. A later credit or debit note would be a new document. It is not built yet. Void of a Mushak 6.3 is an internal cancellation and is not one of these documents.
 
 ### Accounting
 

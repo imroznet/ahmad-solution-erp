@@ -90,6 +90,8 @@ If the party tables are already imported and the quotation tables are not there,
 
 If the quotation tables are already imported and the delivery challan tables are not there, import `deploy/upgrade-delivery-documents-module.sql` once, after the quotations file. It creates the challan and commercial invoice tables if they are missing, including the superseded-line columns, adds the challan and invoice permissions, grants the default role set without deleting current grants, and records the three delivery-document migration names. A database that already imported the first version of these tables receives the history columns and the current-line unique keys. That repair does not delete line rows. Importing the file again does not duplicate those rows. A second import puts back a default challan or invoice grant that was removed after the first import. It does not remove a grant. Do not import `mysql-schema.sql` again.
 
+If the commercial invoice tables are already imported and the tax tables are not there, import `deploy/upgrade-tax-documents-module.sql` once, after the delivery-document file. It creates the tax-rule, Mushak 6.3, VDS, and AIT tables if they are missing, adds their permissions, grants the default role set without deleting current grants, and records the two tax migration names. It does not insert a tax rate. Importing it again does not duplicate those rows. A second import puts back a default tax grant that was removed after the first import. It does not remove a grant. Do not import `mysql-schema.sql` again.
+
 `artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role.
 
 ### First administrator

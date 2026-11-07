@@ -26,6 +26,8 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
 use App\Http\Controllers\TaxRuleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WithholdingController;
+use App\Tax\TaxType;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('quotation.share:read')->group(function (): void {

@@ -93,11 +93,25 @@ An invoice line amount is the slice quantity times the accepted unit price, roun
 
 A challan with a draft or issued invoice line pointing at it cannot be voided. Voiding an invoice does not void the challan. Credit notes and debit notes are not in this schema. Void is the adjustment path for this release.
 
+## Tax tables
+
+| Table | Purpose |
+| --- | --- |
+| `tax_rule_versions` | One immutable version of an output VAT, VDS, or AIT rule. `effective_from` and `effective_to` are inclusive. A null end means the version is still open. |
+| `tax_rule_events` | Append-only history for that version. |
+| `mushak63_documents` | A Mushak 6.3 working paper for one commercial invoice. Issue columns stay empty while the legal gate is closed. |
+| `mushak63_lines` | Copied commercial-invoice lines. No VAT amount is stored on the line. |
+| `mushak63_events` | Append-only history, including a refused issue. |
+| `vds_records` / `ait_records` | Separate withholding records. A preview snapshot is not a certificate and is not output VAT. |
+| `vds_record_events` / `ait_record_events` | Append-only history for those records. |
+
+No row in these tables is seeded. Overlap is rejected in the application for the same tax type, classification, and rule code. The database does not contain a statutory default rate.
+
 ## Planned tables
 
 These tables are not created yet.
 
-### Adjustments and tax
+### Adjustments
 
 - `credit_notes`
 - `debit_notes`

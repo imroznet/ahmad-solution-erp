@@ -15,4 +15,16 @@ final class VatPresentation
     {
         return (string) Decimal::of($amount)->toScale(2, RoundingMode::HalfUp);
     }
+
+    /**
+     * A typed percentage for display, without the stored scale's trailing
+     * zeros: 15.0000 becomes 15, 7.5000 becomes 7.5. The stored value is
+     * unchanged; this only affects what the PDF prints.
+     */
+    public static function rate(string $rate): string
+    {
+        $trimmed = rtrim(rtrim($rate, '0'), '.');
+
+        return $trimmed === '' || $trimmed === '-' ? '0' : $trimmed;
+    }
 }

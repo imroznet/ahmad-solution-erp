@@ -80,6 +80,16 @@ class VatLineCalculatorTest extends TestCase
         $this->assertSame('1.23', VatPresentation::poisha($finer->vat));
     }
 
+    public function test_precision_three_keeps_three_decimal_places(): void
+    {
+        $result = (new VatLineCalculator)->calculate('100.05', '10', '0', null, 'forward', 3, VatRounding::HALF_UP);
+
+        $this->assertSame('10.005', $result->vat);
+        $this->assertSame('100.050', $result->base);
+        $this->assertSame('110.055', $result->final);
+        $this->assertSame('110.06', VatPresentation::poisha((string) $result->final));
+    }
+
     public function test_a_negative_final_and_an_unparsed_rate_are_rejected(): void
     {
         $calculator = new VatLineCalculator;

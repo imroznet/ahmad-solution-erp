@@ -134,6 +134,7 @@ Done in this branch:
 - Mushak 6.3 as its own document on an issued commercial invoice. Seller BIN and address come from the company profile and are snapshotted at issue. The buyer can be the invoice customer, an existing party, or a one-off name that does not create a party. Issued rows cannot be edited. Void keeps the row. The PDF is private
 - A typed VAT percentage, including an explicit zero. A blank percentage does not calculate. VAT and the VAT-inclusive final amount calculate from that percentage. Editing the final amount reverse-calculates the base and keeps the percentage and the adjustment. `final = base + VAT + adjustment`. Precision 2, 3, or 4 and the selected rounding method are stored. A signed rounding adjustment is separate from VAT. BDT on the form is shown at two decimal places
 - VDS and AIT records in both directions, with typed basis and amount. They are not added to output VAT. No Mushak 6.6 or withholding certificate is generated, because those forms were not verified
+- Milestone 6 hardening (branch `muse/milestone-6-hardening`, not yet merged): a commercial invoice cannot be voided while a linked Mushak 6.3 is issued — the Mushak must be voided first, with a reason; a draft Mushak does not block the void. A Mushak draft update reloads the row under `lockForUpdate()` inside the transaction and rechecks that it is still a draft, so a concurrent issue cannot be overwritten; the same recheck was added to Mushak void. The draft Mushak form now calculates live: base, rate, final, adjustment, precision, and rounding changes call `POST /tax/mushak/calculate`, which runs the same server-side `VatLineCalculator` that runs on save. The browser does no money arithmetic. Supplementary duty has no live handler and never changes the driver, base, or VAT. The rendered Mushak PDF was checked against the owner-confirmed PDF (SHA-256 matches the source register): seller, buyer, amounts, and the supplementary note are correct, and the table now has the official form's total row and prints the rate as `15%` instead of `15.0000%`. Bengali labels are still not rendered — the PDF says so in plain text — and that remains future work
 
 Not done, and not claimed:
 
@@ -143,6 +144,7 @@ Not done, and not claimed:
 - An official VDS or AIT certificate
 - Journals, receivables, payables, receipts, or payments
 - Email, filing, or deployment
+- Bengali labels / font rendering in the Mushak 6.3 PDF, and a printed-layout check
 
 ## Milestone 7 — accounting
 

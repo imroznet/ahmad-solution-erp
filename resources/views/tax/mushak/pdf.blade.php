@@ -22,6 +22,23 @@
     <p><strong>Buyer:</strong> {{ $invoice->buyer_name }}<br>
         BIN: {{ $invoice->buyer_bin ?: 'Not entered' }}<br>
         Destination of supply: {{ $invoice->destination }}</p>
+    @php
+        // The official form's total row. Column 10 is base + VAT + SD, as the
+        // field map records; the rounding adjustment is not a column, so it
+        // is not in this total. The final amount including the adjustment is
+        // in the supplementary note below.
+        $totalInclusive = null;
+        if (is_string($invoice->subtotal_base)) {
+            $totalInclusive = \App\Support\Decimal::of($invoice->subtotal_base);
+            if (is_string($invoice->total_vat)) {
+                $totalInclusive = $totalInclusive->plus(\App\Support\Decimal::of($invoice->total_vat));
+            }
+            if (is_string($invoice->total_supplementary_duty)) {
+                $totalInclusive = $totalInclusive->plus(\App\Support\Decimal::of($invoice->total_supplementary_duty));
+            }
+            $totalInclusive = \App\Tax\VatPresentation::poisha((string) $totalInclusive);
+        }
+    @endphp
     <table>
         <thead>
             <tr>
@@ -60,12 +77,22 @@
                     <td>{{ $line->source_unit_price }}</td>
                     <td>{{ is_string($base) ? \App\Tax\VatPresentation::poisha($base) : '' }}</td>
                     <td>{{ is_string($sd) && $sd !== '' ? \App\Tax\VatPresentation::poisha($sd) : '' }}</td>
-                    <td>{{ $line->vat_rate_percent === null ? '' : $line->vat_rate_percent.'%' }}</td>
+                    <td>{{ $line->vat_rate_percent === null ? '' : \App\Tax\VatPresentation::rate($line->vat_rate_percent).'%' }}</td>
                     <td>{{ is_string($vat) ? \App\Tax\VatPresentation::poisha($vat) : '' }}</td>
                     <td>{{ $inclusive }}</td>
                 </tr>
             @endforeach
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="5"><strong>Total</strong></td>
+                <td>{{ is_string($invoice->subtotal_base) ? \App\Tax\VatPresentation::poisha($invoice->subtotal_base) : '' }}</td>
+                <td>{{ is_string($invoice->total_supplementary_duty) ? \App\Tax\VatPresentation::poisha($invoice->total_supplementary_duty) : '' }}</td>
+                <td></td>
+                <td>{{ is_string($invoice->total_vat) ? \App\Tax\VatPresentation::poisha($invoice->total_vat) : '' }}</td>
+                <td>{{ $totalInclusive }}</td>
+            </tr>
+        </tfoot>
     </table>
     <p>Responsible person: {{ $invoice->responsible_name }} {{ $invoice->responsible_designation }}</p>
     <p>Signature: ____________________ &nbsp; Seal: ____________________</p>

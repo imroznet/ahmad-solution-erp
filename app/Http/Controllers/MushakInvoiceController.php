@@ -12,6 +12,8 @@ use App\Tax\MushakWriter;
 use App\Tax\TaxAuthorizer;
 use App\Tax\TaxPdfRenderer;
 use App\Tax\TaxRuleException;
+use App\Tax\VatLineCalculator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -103,6 +105,49 @@ class MushakInvoiceController extends Controller
         return redirect()->route('mushak.show', $mushak)->with('status', 'Mushak amounts were calculated from the percentage you entered. The system did not choose that percentage.');
     }
 
+    /**
+     * Live preview for the draft Mushak form. This only calculates; it
+     * saves nothing. The same VatLineCalculator runs again on submit, so
+     * the preview can never smuggle a different amount into the document.
+     * No Mushak id is needed: the arithmetic is stateless, and the caller
+     * still needs mushak.update, the same permission as editing a draft.
+     */
+    public function calculate(Request $request, VatLineCalculator $calculator): JsonResponse
+    {
+        $user = $this->actor($request);
+        abort_unless($user->hasPermission('mushak.update'), 403);
+
+        try {
+            $result = $calculator->calculate(
+                base: $this->decimalInput($request, 'base_amount', ''),
+                rate: $this->nullableDecimalInput($request, 'vat_rate'),
+                adjustment: $this->decimalInput($request, 'adjustment_amount', '0'),
+                final: $this->nullableDecimalInput($request, 'final_amount'),
+                driver: $this->stringInput($request, 'driver', 'forward'),
+                precision: (int) $request->input('calculation_precision', 2),
+                roundingMethod: $this->stringInput($request, 'rounding_method', 'half_up'),
+            );
+        } catch (TaxRuleException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'field' => $exception->field,
+            ], 422);
+        }
+
+        return response()->json([
+            'base_amount' => $result->base,
+            'vat_rate' => $result->rate,
+            'vat_amount' => $result->vat,
+            'forward_vat_amount' => $result->forwardVat,
+            'residual_applied' => $result->residualApplied,
+            'adjustment_amount' => $result->adjustment,
+            'final_amount' => $result->final,
+            'precision' => $result->precision,
+            'rounding_method' => $result->roundingMethod,
+            'driver' => $result->driver,
+        ]);
+    }
+
     public function issue(Request $request, MushakInvoice $mushak): RedirectResponse
     {
         $user = $this->actor($request);
@@ -137,6 +182,27 @@ class MushakInvoiceController extends Controller
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    private function decimalInput(Request $request, string $field, string $default): string
+    {
+        $value = $request->input($field, $default);
+
+        return is_string($value) || is_int($value) ? trim((string) $value) : $default;
+    }
+
+    private function nullableDecimalInput(Request $request, string $field): ?string
+    {
+        $value = $this->decimalInput($request, $field, '');
+
+        return $value === '' ? null : $value;
+    }
+
+    private function stringInput(Request $request, string $field, string $default): string
+    {
+        $value = $request->input($field, $default);
+
+        return is_string($value) && $value !== '' ? $value : $default;
     }
 
     /**

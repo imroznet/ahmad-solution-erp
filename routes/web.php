@@ -397,6 +397,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/tax/mushak/create', [MushakInvoiceController::class, 'create'])
         ->middleware('permission:mushak.create')
         ->name('mushak.create');
+    Route::post('/tax/mushak/calculate', [MushakInvoiceController::class, 'calculate'])
+        ->middleware('permission:mushak.update')
+        ->name('mushak.calculate');
     Route::post('/tax/mushak', [MushakInvoiceController::class, 'store'])
         ->middleware('permission:mushak.create')
         ->name('mushak.store');

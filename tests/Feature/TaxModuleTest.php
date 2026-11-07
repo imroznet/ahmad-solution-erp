@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Documents\DocumentStatus;
 use App\Models\AitRecord;
 use App\Models\AuditLog;
 use App\Models\CommercialInvoice;
@@ -19,8 +20,10 @@ use App\Models\User;
 use App\Models\VdsRecord;
 use App\Quotations\QuotationStatus;
 use App\Support\Decimal;
+use App\Tax\MushakWriter;
 use App\Tax\TaxModuleInstaller;
 use App\Tax\TaxModuleSql;
+use App\Tax\TaxRuleException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -145,11 +148,212 @@ class TaxModuleTest extends TestCase
         $this->assertStringNotContainsString('SECRET-NOTE', $html);
         $this->assertStringContainsString('Supplementary calculation', $html);
         $this->assertStringContainsString('Rounding / decimal adjustment', $html);
+        // The official form's total row, and the rate without stored-scale zeros.
+        $this->assertStringContainsString('Total', $html);
+        $this->assertStringContainsString('1725.00', $html);
+        $this->assertStringContainsString('15%', $html);
+        $this->assertStringNotContainsString('15.0000%', $html);
 
         $this->actingAs($accountant)->put(route('mushak.update', $mushak), $this->mushakPayload($mushak, $lineId))->assertForbidden();
         $this->expectException(\LogicException::class);
         $mushak->buyer_name = 'Changed after issue';
         $mushak->save();
+    }
+
+    public function test_mushak_pdf_download_is_a_private_pdf_and_is_audited(): void
+    {
+        [$sales, $manager, $accountant] = $this->team();
+        $customer = $this->party(['bin' => '000000000-0000']);
+        $invoice = $this->issuedInvoice($sales, $manager, $customer);
+        $this->company('123456789-0001');
+        $mushak = $this->issuedMushak($accountant, $invoice);
+
+        $this->actingAsGuest()->get(route('mushak.pdf', $mushak))->assertRedirect(route('login'));
+        $pdf = $this->actingAs($accountant)->get(route('mushak.pdf', $mushak));
+        $pdf->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $pdf->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', (string) $pdf->getContent());
+        $this->assertDatabaseHas('audit_logs', ['event' => 'mushak_pdf_downloaded']);
+    }
+
+    public function test_a_draft_mushak_does_not_block_voiding_its_commercial_invoice(): void
+    {
+        [$sales, $manager, $accountant] = $this->team();
+        $customer = $this->party(['bin' => '000000000-0000']);
+        $invoice = $this->issuedInvoice($sales, $manager, $customer);
+        $this->company('123456789-0001');
+
+        $this->actingAs($accountant)->post('/tax/mushak', ['commercial_invoice_id' => $invoice->id])->assertRedirect();
+        $draft = MushakInvoice::query()->firstOrFail();
+        $this->assertSame('draft', $draft->status);
+
+        $this->actingAs($manager)->post(route('invoices.void', $invoice), ['void_reason' => 'Wrong amount'])->assertRedirect();
+        $this->assertSame(DocumentStatus::VOIDED, $invoice->fresh()?->status);
+        $this->assertSame('draft', $draft->fresh()?->status);
+    }
+
+    public function test_an_issued_mushak_blocks_voiding_its_commercial_invoice_until_the_mushak_is_voided(): void
+    {
+        [$sales, $manager, $accountant] = $this->team();
+        $accountsManager = $this->userWithRole('accounts-manager');
+        $customer = $this->party(['bin' => '000000000-0000']);
+        $invoice = $this->issuedInvoice($sales, $manager, $customer);
+        $this->company('123456789-0001');
+
+        $mushak = $this->issuedMushak($accountant, $invoice);
+        $this->assertSame('issued', $mushak->status);
+
+        $this->actingAs($manager)->from(route('invoices.show', $invoice))
+            ->post(route('invoices.void', $invoice), ['void_reason' => 'Wrong amount'])
+            ->assertSessionHasErrors('commercial_invoice_id');
+        $this->assertSame(DocumentStatus::ISSUED, $invoice->fresh()?->status);
+        $this->assertSame('issued', $mushak->fresh()?->status);
+
+        $this->actingAs($accountsManager)->post(route('mushak.void', $mushak), ['void_reason' => 'Wrong VAT rate'])->assertRedirect();
+        $this->assertSame('void', $mushak->fresh()?->status);
+        $this->assertSame('Wrong VAT rate', $mushak->fresh()?->void_reason);
+
+        $this->actingAs($manager)->post(route('invoices.void', $invoice), ['void_reason' => 'Wrong amount'])->assertRedirect();
+        $this->assertSame(DocumentStatus::VOIDED, $invoice->fresh()?->status);
+        $this->assertSame('void', $mushak->fresh()?->status);
+        $this->assertDatabaseHas('audit_logs', ['event' => 'mushak_voided']);
+        $this->assertDatabaseHas('audit_logs', ['event' => 'commercial_invoice_voided']);
+
+        $this->actingAs($manager)->post(route('invoices.void', $invoice), ['void_reason' => 'Again'])->assertSessionHasErrors('invoice');
+    }
+
+    public function test_a_mushak_update_after_issue_is_rejected_even_with_a_stale_draft_model(): void
+    {
+        [$sales, $manager, $accountant] = $this->team();
+        $customer = $this->party(['bin' => '000000000-0000']);
+        $invoice = $this->issuedInvoice($sales, $manager, $customer);
+        $this->company('123456789-0001');
+        $mushak = $this->issuedMushak($accountant, $invoice);
+
+        // Keep the pre-issue model in memory: its status still reads draft.
+        $stale = $mushak->replicate();
+        $stale->id = $mushak->id;
+        $stale->status = 'draft';
+        $stale->exists = true;
+        $lineId = (int) $mushak->lines()->firstOrFail()->id;
+
+        try {
+            app(MushakWriter::class)->update($accountant, $stale, $this->mushakPayload($mushak, $lineId, [
+                'vat_rate' => '10',
+            ]));
+            $this->fail('A stale draft update must not save over an issued Mushak.');
+        } catch (TaxRuleException $exception) {
+            $this->assertSame('Only a draft Mushak 6.3 can be edited.', $exception->getMessage());
+        }
+
+        $this->assertSame('15.0000', $mushak->fresh()?->lines()->firstOrFail()->vat_rate_percent);
+        $this->assertSame(1, MushakInvoice::query()->where('status', 'issued')->count());
+
+        // Voiding twice is also rejected by the locked recheck in void().
+        app(MushakWriter::class)->void($accountant, $mushak->fresh() ?? $mushak, 'Wrong VAT rate');
+
+        try {
+            app(MushakWriter::class)->void($accountant, $mushak, 'Again');
+            $this->fail('A voided Mushak must not be voided again.');
+        } catch (TaxRuleException $exception) {
+            $this->assertSame('Only an issued Mushak 6.3 can be voided.', $exception->getMessage());
+        }
+    }
+
+    public function test_mushak_calculate_endpoint_is_the_same_calculator_as_submit(): void
+    {
+        [$sales, $manager, $accountant] = $this->team();
+
+        $this->actingAs($sales)->postJson(route('mushak.calculate'), [
+            'base_amount' => '1500.00', 'vat_rate' => '15', 'adjustment_amount' => '0',
+            'driver' => 'forward', 'calculation_precision' => 2, 'rounding_method' => 'half_up',
+        ])->assertForbidden();
+
+        $payload = [
+            'base_amount' => '1500.00', 'vat_rate' => '15', 'adjustment_amount' => '0.50',
+            'final_amount' => '', 'driver' => 'forward', 'calculation_precision' => 2, 'rounding_method' => 'half_up',
+        ];
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), $payload)->assertOk()->assertJson([
+            'base_amount' => '1500.00', 'vat_rate' => '15', 'vat_amount' => '225.00',
+            'adjustment_amount' => '0.50', 'final_amount' => '1725.50', 'residual_applied' => false, 'driver' => 'forward',
+        ]);
+
+        // Editing the final amount reverses: the rate and adjustment stay,
+        // the base and VAT are derived, and the final amount is kept exactly.
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), array_merge($payload, [
+            'driver' => 'reverse', 'final_amount' => '1725.50', 'calculation_precision' => 4, 'rounding_method' => 'half_even',
+        ]))->assertOk()->assertJson([
+            'base_amount' => '1500.0000', 'vat_rate' => '15', 'vat_amount' => '225.0000',
+            'adjustment_amount' => '0.5000', 'final_amount' => '1725.5000', 'residual_applied' => false, 'driver' => 'reverse',
+        ]);
+
+        // A blank rate calculates nothing; an explicit zero calculates zero VAT.
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), array_merge($payload, [
+            'vat_rate' => '', 'adjustment_amount' => '0',
+        ]))->assertOk()->assertJson([
+            'base_amount' => '1500.00', 'vat_rate' => null, 'vat_amount' => null, 'final_amount' => null,
+        ]);
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), array_merge($payload, [
+            'vat_rate' => '0',
+        ]))->assertOk()->assertJson([
+            'vat_amount' => '0.00', 'final_amount' => '1500.50',
+        ]);
+
+        // Changing the adjustment changes only the final amount.
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), array_merge($payload, [
+            'adjustment_amount' => '-0.25',
+        ]))->assertOk()->assertJson([
+            'base_amount' => '1500.00', 'vat_amount' => '225.00', 'final_amount' => '1724.75',
+        ]);
+
+        // Rounding boundary at precision 2: 100.05 at 10% is 10.005 VAT.
+        $boundary = array_merge($payload, ['base_amount' => '100.05', 'vat_rate' => '10', 'adjustment_amount' => '0']);
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), $boundary)->assertOk()->assertJson([
+            'vat_amount' => '10.01', 'final_amount' => '110.06',
+        ]);
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), array_merge($boundary, [
+            'rounding_method' => 'half_even',
+        ]))->assertOk()->assertJson([
+            'vat_amount' => '10.00', 'final_amount' => '110.05',
+        ]);
+
+        // Reversing without a rate is rejected, not treated as zero.
+        $this->actingAs($accountant)->postJson(route('mushak.calculate'), array_merge($payload, [
+            'driver' => 'reverse', 'final_amount' => '1725.50', 'vat_rate' => '',
+        ]))->assertStatus(422)->assertJsonPath('field', 'vat_rate');
+    }
+
+    public function test_supplementary_duty_does_not_change_the_vat_driver_base_or_vat(): void
+    {
+        [$sales, $manager, $accountant] = $this->team();
+        $customer = $this->party(['bin' => '000000000-0000']);
+        $invoice = $this->issuedInvoice($sales, $manager, $customer);
+        $this->company('123456789-0001');
+
+        $this->actingAs($accountant)->post('/tax/mushak', ['commercial_invoice_id' => $invoice->id])->assertRedirect();
+        $mushak = MushakInvoice::query()->firstOrFail();
+        $lineId = (int) $mushak->lines()->firstOrFail()->id;
+        $this->actingAs($accountant)->put(route('mushak.update', $mushak), $this->mushakPayload($mushak, $lineId, [
+            'vat_rate' => '15', 'adjustment_amount' => '0.50', 'adjustment_reason' => 'Poisha difference',
+        ]))->assertRedirect();
+
+        // The live form itself carries the calculator, the calculated VAT
+        // column, and the driver the submit will use.
+        $this->actingAs($accountant)->get(route('mushak.edit', $mushak))->assertOk()
+            ->assertSee('mushakForm()', false)
+            ->assertSee('Calculated VAT', false)
+            ->assertSee(route('mushak.calculate'), false);
+
+        $this->actingAs($accountant)->put(route('mushak.update', $mushak), $this->mushakPayload($mushak, $lineId, [
+            'vat_rate' => '15', 'adjustment_amount' => '0.50', 'adjustment_reason' => 'Poisha difference',
+            'supplementary_duty_amount' => '100.00',
+        ]))->assertRedirect();
+        $line = $mushak->lines()->firstOrFail();
+        $this->assertSame('1500.0000', $line->base_amount);
+        $this->assertSame('225.0000', $line->vat_amount);
+        $this->assertSame('1725.5000', $line->final_amount);
+        $this->assertSame('100.0000', $line->supplementary_duty_amount);
+        $this->assertSame('forward', $line->calculation_snapshot['driver']);
     }
 
     public function test_issue_is_blocked_without_a_company_bin_or_a_typed_rate_and_vds_stays_separate(): void
@@ -298,6 +502,21 @@ class TaxModuleTest extends TestCase
             'section_reference' => 'Rule 40',
             'source_url' => 'https://dknvat.gov.bd/assets/document/form/form_175068235417Xz9DmBrT9uc6V.pdf',
         ], $overrides);
+    }
+
+    private function issuedMushak(User $accountant, CommercialInvoice $invoice): MushakInvoice
+    {
+        $this->actingAs($accountant)->post('/tax/mushak', ['commercial_invoice_id' => $invoice->id])->assertRedirect();
+        $mushak = MushakInvoice::query()->where('commercial_invoice_id', $invoice->id)->orderByDesc('id')->firstOrFail();
+        $lineId = (int) $mushak->lines()->firstOrFail()->id;
+        $this->actingAs($accountant)->put(route('mushak.update', $mushak), $this->mushakPayload($mushak, $lineId, [
+            'vat_rate' => '15',
+            'adjustment_amount' => '0.50',
+            'adjustment_reason' => 'Poisha difference',
+        ]))->assertRedirect();
+        $this->actingAs($accountant)->post(route('mushak.issue', $mushak))->assertRedirect();
+
+        return $mushak->fresh() ?? $mushak;
     }
 
     /**

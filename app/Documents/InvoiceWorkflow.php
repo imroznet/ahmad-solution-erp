@@ -4,6 +4,7 @@ namespace App\Documents;
 
 use App\Models\CommercialInvoice;
 use App\Models\CommercialInvoiceEvent;
+use App\Models\MushakInvoice;
 use App\Models\User;
 use App\Services\AuditLogger;
 
@@ -62,11 +63,29 @@ final class InvoiceWorkflow
     public function void(CommercialInvoice $invoice, User $actor, string $reason): void
     {
         $this->transactions->run(function () use ($invoice, $actor, $reason): void {
+            // Lock order: linked Mushak rows first, then the quotation header,
+            // then the invoice. MushakWriter::issue() locks the Mushak row
+            // before the invoice row, so voiding in the same order avoids a
+            // lock-order inversion with a concurrent issue.
+            $mushaks = MushakInvoice::query()
+                ->where('commercial_invoice_id', (int) $invoice->getKey())
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
             $this->locks->header((int) $invoice->quotation_id);
             $invoice = $this->locks->invoice((int) $invoice->getKey());
 
             if (! in_array($invoice->stringAttribute('status'), [DocumentStatus::DRAFT, DocumentStatus::ISSUED], true)) {
                 throw new DocumentRuleException('invoice', 'This invoice is already voided.');
+            }
+
+            foreach ($mushaks as $mushak) {
+                if ($mushak->stringAttribute('status') === 'issued') {
+                    throw new DocumentRuleException(
+                        'commercial_invoice_id',
+                        'Void the issued Mushak 6.3 ('.$mushak->displayNumber().') before voiding this commercial invoice.'
+                    );
+                }
             }
 
             $voidReason = $this->text->required($reason, 'void_reason', 1000);

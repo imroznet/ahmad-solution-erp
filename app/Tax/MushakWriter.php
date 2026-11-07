@@ -83,34 +83,43 @@ final class MushakWriter
             throw new TaxRuleException('mushak', 'Only a draft Mushak 6.3 can be edited.');
         }
 
-        $mushak->loadMissing(['lines', 'commercialInvoice.lines', 'commercialInvoice.quotation']);
-        $invoice = $mushak->commercialInvoice;
+        return DB::transaction(function () use ($actor, $mushak, $input): MushakInvoice {
+            // The pre-transaction check above is only a fast fail. Reload
+            // under lock and recheck here: a concurrent issue could otherwise
+            // commit after that check but before this update saves.
+            $locked = MushakInvoice::query()->whereKey($mushak->id)->lockForUpdate()->firstOrFail();
 
-        if (! $invoice instanceof CommercialInvoice) {
-            throw new TaxRuleException('commercial_invoice_id', 'The commercial invoice is missing.');
-        }
+            if ($locked->stringAttribute('status') !== 'draft') {
+                throw new TaxRuleException('mushak', 'Only a draft Mushak 6.3 can be edited.');
+            }
 
-        return DB::transaction(function () use ($actor, $mushak, $input, $invoice): MushakInvoice {
+            $locked->loadMissing(['lines', 'commercialInvoice.lines', 'commercialInvoice.quotation']);
+            $invoice = $locked->commercialInvoice;
+
+            if (! $invoice instanceof CommercialInvoice) {
+                throw new TaxRuleException('commercial_invoice_id', 'The commercial invoice is missing.');
+            }
+
             $precision = $this->precision($input['calculation_precision'] ?? null);
             $rounding = $this->rounding($input['rounding_method'] ?? null);
-            $mushak->calculation_precision = $precision;
-            $mushak->rounding_method = $rounding;
-            $mushak->document_date = $this->date($input['document_date'] ?? null);
-            $mushak->destination = $this->limited($input['destination'] ?? null, 'destination', 'Enter the destination of supply.', 200);
-            $mushak->responsible_name = $this->optionalLimited($input['responsible_name'] ?? null, 160);
-            $mushak->responsible_designation = $this->optionalLimited($input['responsible_designation'] ?? null, 120);
-            $mushak->internal_notes = $this->optionalText($input['internal_notes'] ?? null);
-            $mushak->tax_review_note = $this->optionalText($input['tax_review_note'] ?? null);
-            $this->applyReview($mushak, $actor, $input);
-            $this->applyBuyer($mushak, $invoice, $actor, $input);
-            $this->applyRuleReference($mushak, $input);
-            $this->applyLines($mushak, $actor, $input, $precision, $rounding);
-            $this->applyTotals($mushak);
-            $mushak->save();
-            $this->event($mushak, MushakInvoiceEvent::UPDATED, $actor, null);
-            $this->audit->record('mushak_updated', $mushak, newValues: $this->payload($mushak), actor: $actor);
+            $locked->calculation_precision = $precision;
+            $locked->rounding_method = $rounding;
+            $locked->document_date = $this->date($input['document_date'] ?? null);
+            $locked->destination = $this->limited($input['destination'] ?? null, 'destination', 'Enter the destination of supply.', 200);
+            $locked->responsible_name = $this->optionalLimited($input['responsible_name'] ?? null, 160);
+            $locked->responsible_designation = $this->optionalLimited($input['responsible_designation'] ?? null, 120);
+            $locked->internal_notes = $this->optionalText($input['internal_notes'] ?? null);
+            $locked->tax_review_note = $this->optionalText($input['tax_review_note'] ?? null);
+            $this->applyReview($locked, $actor, $input);
+            $this->applyBuyer($locked, $invoice, $actor, $input);
+            $this->applyRuleReference($locked, $input);
+            $this->applyLines($locked, $actor, $input, $precision, $rounding);
+            $this->applyTotals($locked);
+            $locked->save();
+            $this->event($locked, MushakInvoiceEvent::UPDATED, $actor, null);
+            $this->audit->record('mushak_updated', $locked, newValues: $this->payload($locked), actor: $actor);
 
-            return $mushak->refresh();
+            return $locked->refresh();
         });
     }
 
@@ -203,6 +212,11 @@ final class MushakWriter
 
         return DB::transaction(function () use ($actor, $mushak, $reason): MushakInvoice {
             $locked = MushakInvoice::query()->whereKey($mushak->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->stringAttribute('status') !== 'issued') {
+                throw new TaxRuleException('mushak', 'Only an issued Mushak 6.3 can be voided.');
+            }
+
             $locked->status = 'void';
             $locked->voided_at = now();
             $locked->voided_by = $actor->id;

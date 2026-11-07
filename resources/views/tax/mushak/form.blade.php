@@ -120,12 +120,17 @@
         // VatLineCalculator, the same authority that runs again on save.
         // That is what keeps the preview and the submitted values in
         // agreement, including half-even and directed rounding.
+        //
+        // The request protocol — debounce, invalidation, and which
+        // response may update the form — lives in
+        // resources/js/mushak-preview.js (window.createMushakPreview).
+        // This component is only the adapter between that controller
+        // and the row's fields.
         function mushakForm() {
             return {
                 precision: '2',
                 method: 'half_up',
-                timers: {},
-                requests: {},
+                controllers: {},
                 init() {
                     this.precision = this.$root.dataset.precision || '2';
                     this.method = this.$root.dataset.method || 'half_up';
@@ -136,6 +141,58 @@
                 field(row, name) {
                     return row.querySelector('[data-field="' + name + '"]');
                 },
+                controller(index) {
+                    if (!this.controllers[index]) {
+                        this.controllers[index] = window.createMushakPreview({
+                            read: () => this.readRow(index),
+                            send: (snapshot, signal) => this.sendPreview(snapshot, signal),
+                            apply: (patch) => this.applyRow(index, patch),
+                            note: (text) => {
+                                const row = this.row(index);
+                                if (row) this.field(row, 'note').textContent = text;
+                            },
+                        });
+                    }
+                    return this.controllers[index];
+                },
+                readRow(index) {
+                    const row = this.row(index);
+                    return {
+                        driver: this.field(row, 'driver').value,
+                        base: this.field(row, 'base_amount').value.trim(),
+                        rate: this.field(row, 'vat_rate').value.trim(),
+                        adjustment: this.field(row, 'adjustment_amount').value.trim(),
+                        final: this.field(row, 'final_amount').value.trim(),
+                        precision: this.precision,
+                        method: this.method,
+                    };
+                },
+                async sendPreview(snapshot, signal) {
+                    const body = new FormData();
+                    body.append('_token', this.$root.querySelector('input[name="_token"]').value);
+                    body.append('calculation_precision', snapshot.precision);
+                    body.append('rounding_method', snapshot.method);
+                    body.append('driver', snapshot.driver);
+                    body.append('base_amount', snapshot.base);
+                    body.append('vat_rate', snapshot.rate);
+                    body.append('adjustment_amount', snapshot.adjustment === '' ? '0' : snapshot.adjustment);
+                    body.append('final_amount', snapshot.final);
+                    const response = await fetch(this.$root.dataset.calculateUrl, {
+                        method: 'POST',
+                        headers: { Accept: 'application/json' },
+                        body,
+                        signal,
+                    });
+                    return { ok: response.ok, payload: await response.json() };
+                },
+                applyRow(index, patch) {
+                    const row = this.row(index);
+                    if (!row) return;
+                    for (const [name, value] of Object.entries(patch)) {
+                        const el = this.field(row, name);
+                        if (el) el.value = value ?? '';
+                    }
+                },
                 edited(index, origin) {
                     const row = this.row(index);
                     if (! row) return;
@@ -144,88 +201,13 @@
                     // An adjustment edit therefore never reverse-calculates
                     // the base or the VAT. A final-amount edit reverses.
                     if (driver) driver.value = origin === 'final' ? 'reverse' : 'forward';
-                    clearTimeout(this.timers[index]);
-                    this.timers[index] = setTimeout(() => this.preview(index), 250);
+                    this.controller(index).edited();
                 },
                 recalculateAll() {
-                    this.$root.querySelectorAll('[data-line]').forEach((row) => this.preview(row.dataset.line));
+                    this.$root.querySelectorAll('[data-line]').forEach((row) => this.controller(row.dataset.line).request());
                 },
-                async preview(index, normalize = false) {
-                    const row = this.row(index);
-                    if (! row) return;
-                    const base = this.field(row, 'base_amount').value.trim();
-                    const rate = this.field(row, 'vat_rate').value.trim();
-                    const adjustment = this.field(row, 'adjustment_amount').value.trim();
-                    const finalAmount = this.field(row, 'final_amount').value.trim();
-                    const driver = this.field(row, 'driver').value;
-                    const note = this.field(row, 'note');
-                    if (driver === 'reverse' && finalAmount === '') {
-                        this.field(row, 'base_amount').value = '';
-                        this.field(row, 'vat_amount').value = '';
-                        note.textContent = '';
-                        return;
-                    }
-                    if (driver === 'forward' && base === '') {
-                        this.field(row, 'vat_amount').value = '';
-                        this.field(row, 'final_amount').value = '';
-                        note.textContent = '';
-                        return;
-                    }
-                    const requestId = (this.requests[index] || 0) + 1;
-                    this.requests[index] = requestId;
-                    const body = new FormData();
-                    body.append('_token', this.$root.querySelector('input[name="_token"]').value);
-                    body.append('calculation_precision', this.precision);
-                    body.append('rounding_method', this.method);
-                    body.append('driver', driver);
-                    body.append('base_amount', base);
-                    body.append('vat_rate', rate);
-                    body.append('adjustment_amount', adjustment === '' ? '0' : adjustment);
-                    body.append('final_amount', finalAmount);
-                    let response;
-                    let payload;
-                    try {
-                        response = await fetch(this.$root.dataset.calculateUrl, {
-                            method: 'POST',
-                            headers: { Accept: 'application/json' },
-                            body,
-                        });
-                        payload = await response.json();
-                    } catch (error) {
-                        note.textContent = 'Could not calculate yet. Saving will calculate again.';
-                        return;
-                    }
-                    if (this.requests[index] !== requestId) return;
-                    if (! response.ok) {
-                        note.textContent = payload.message || 'The line could not be calculated.';
-                        return;
-                    }
-                    // While typing, only derived fields change, so the field
-                    // being edited keeps the user's text and caret. On blur,
-                    // every field is normalised to the server's scaled values.
-                    // The percentage is never overwritten: it stays exactly
-                    // as the user typed it.
-                    this.field(row, 'vat_amount').value = payload.vat_amount ?? '';
-                    if (driver === 'reverse') {
-                        this.field(row, 'base_amount').value = payload.base_amount;
-                        if (normalize) {
-                            this.field(row, 'final_amount').value = payload.final_amount ?? '';
-                            this.field(row, 'adjustment_amount').value = payload.adjustment_amount;
-                        }
-                    } else {
-                        this.field(row, 'final_amount').value = payload.final_amount ?? '';
-                        if (normalize) {
-                            this.field(row, 'base_amount').value = payload.base_amount;
-                            this.field(row, 'adjustment_amount').value = payload.adjustment_amount;
-                        }
-                    }
-                    if (payload.vat_rate === null) {
-                        note.textContent = 'No VAT calculated — the percentage is blank.';
-                    } else if (payload.residual_applied) {
-                        note.textContent = 'VAT is the residual, so the final amount is kept exactly.';
-                    } else {
-                        note.textContent = '';
-                    }
+                preview(index, normalize = false) {
+                    return this.controller(index).request({ normalize });
                 },
             };
         }

@@ -64,6 +64,9 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Run JavaScript tests
+        run: npm run test:js
+
       - name: Build frontend assets
         run: |
           npm ci

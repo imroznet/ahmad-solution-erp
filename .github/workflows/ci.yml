@@ -72,8 +72,16 @@ jobs:
           npm ci
           npm run build
 
+      # The runner image already has a MySQL client. Installing the mysql-client
+      # package upgrades the host server, and that package's postinst fails
+      # while the service container owns port 3306.
       - name: Install MySQL client and zip
-        run: sudo apt-get update && sudo apt-get install -y mysql-client zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends zip
+          if ! command -v mysql >/dev/null 2>&1 || ! command -v mysqldump >/dev/null 2>&1; then
+            sudo apt-get install -y --no-install-recommends mysql-client-core
+          fi
 
       - name: Prove the MySQL schema and write the deployment SQL
         env:

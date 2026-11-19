@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Quotations\QuotationStatus;
 use App\Support\Money;
+use App\Tax\VatPresentation;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,6 +40,12 @@ use LogicException;
     'tax_treatment',
     'subtotal',
     'total',
+    'vat_rate_percent',
+    'tax_rate_percent',
+    'vat_amount',
+    'tax_amount',
+    'adjustment_amount',
+    'adjustment_reason',
     'cancel_reason',
     'cancelled_at',
     'cancelled_by',
@@ -97,6 +104,11 @@ class QuotationRevision extends Model
             'shipping_address' => 'array',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
+            'vat_rate_percent' => 'decimal:4',
+            'tax_rate_percent' => 'decimal:4',
+            'vat_amount' => 'decimal:2',
+            'tax_amount' => 'decimal:2',
+            'adjustment_amount' => 'decimal:2',
             'revision_number' => 'integer',
             'cancelled_at' => 'datetime',
             'expired_at' => 'datetime',
@@ -174,7 +186,38 @@ class QuotationRevision extends Model
 
     public function totalMoney(): Money
     {
-        return Money::of($this->decimalAttribute('total'), $this->stringAttribute('currency_code') ?: Money::DEFAULT_CURRENCY);
+        return Money::of($this->decimalAttribute('total'), $this->currencyCode());
+    }
+
+    public function subtotalMoney(): Money
+    {
+        return Money::of($this->decimalAttribute('subtotal'), $this->currencyCode());
+    }
+
+    public function taxTreatmentLabel(): string
+    {
+        return $this->stringAttribute('tax_treatment') === 'included' ? 'VAT inclusive' : 'VAT exclusive';
+    }
+
+    public function nullableDecimal(string $key): ?string
+    {
+        $value = $this->getAttribute($key);
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function typedRate(string $key): ?string
+    {
+        $value = $this->nullableDecimal($key);
+
+        return $value === null ? null : VatPresentation::rate($value);
+    }
+
+    private function currencyCode(): string
+    {
+        $currency = $this->stringAttribute('currency_code');
+
+        return $currency !== '' ? $currency : Money::DEFAULT_CURRENCY;
     }
 
     /**

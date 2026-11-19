@@ -163,12 +163,14 @@ class ChallanController extends Controller
         $revision = $quotation->currentRevision;
         abort_unless($revision instanceof QuotationRevision, 404);
         $saved = [];
+        $savedUnit = [];
 
         if ($challan instanceof DeliveryChallan) {
             $challan->loadMissing('lines');
 
             foreach ($challan->lines as $line) {
                 $saved[(int) $line->quotation_line_id] = $line->quantityLabel();
+                $savedUnit[(int) $line->quotation_line_id] = $line->stringAttribute('unit');
             }
         }
 
@@ -190,7 +192,7 @@ class ChallanController extends Controller
             $rows[] = [
                 'id' => $lineId,
                 'description' => $line->description,
-                'unit' => $line->unit,
+                'unit' => $savedUnit[$lineId] ?? $line->unit,
                 'accepted' => $line->quantityLabel(),
                 'delivered' => QuotationCalculator::formatQuantity($delivered),
                 'quantity' => $old[$lineId] ?? $default,

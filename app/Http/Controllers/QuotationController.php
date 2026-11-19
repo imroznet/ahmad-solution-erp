@@ -9,12 +9,16 @@ use App\Models\Party;
 use App\Models\Quotation;
 use App\Models\QuotationRevision;
 use App\Quotations\QuotationAuthorizer;
+use App\Quotations\QuotationCalculator;
 use App\Quotations\QuotationListing;
 use App\Quotations\QuotationPdfRenderer;
+use App\Quotations\QuotationRuleException;
+use App\Quotations\QuotationTax;
 use App\Quotations\QuotationWriter;
 use App\Services\AuditLogger;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -60,6 +64,24 @@ class QuotationController extends Controller
             'customers' => $this->withParty($this->customers($request), $party),
             'lines' => [['description' => '', 'unit' => '', 'quantity' => '1', 'unit_price' => '0.00']],
         ]);
+    }
+
+    public function calculate(Request $request, QuotationTax $tax, QuotationCalculator $calculator): JsonResponse
+    {
+        $user = $this->quotationActor();
+        abort_unless(
+            $user->hasPermission('quotations.create') || $user->hasPermission('quotations.update'),
+            403,
+        );
+
+        try {
+            return response()->json($tax->preview($request->all(), $calculator));
+        } catch (QuotationRuleException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'field' => $exception->field,
+            ], 422);
+        }
     }
 
     public function store(SaveQuotationRequest $request, QuotationWriter $writer): RedirectResponse

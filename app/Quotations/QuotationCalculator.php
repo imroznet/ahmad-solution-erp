@@ -18,8 +18,9 @@ use InvalidArgumentException;
  *
  * A line total is quantity × unit price, then rounded to 2 decimal places.
  * A tie rounds away from zero. That is the application money rule. It is not
- * an NBR rule. The quotation total is the sum of those already rounded line
- * totals. Tax is not included.
+ * an NBR rule. The line sum is the base. An excluding revision stores that
+ * sum as the total. An including revision adds the typed VAT, generic tax,
+ * and adjustment in QuotationTax.
  */
 final class QuotationCalculator
 {
@@ -66,7 +67,7 @@ final class QuotationCalculator
                 throw new QuotationRuleException('lines.'.$index.'.description', 'A line description must be 2000 characters or fewer.');
             }
 
-            if ($unit === '' || mb_strlen($unit) > 40) {
+            if ($unit === '' || $unit === '__other__' || mb_strlen($unit) > 40) {
                 throw new QuotationRuleException('lines.'.$index.'.unit', 'Enter a unit of 40 characters or fewer.');
             }
 

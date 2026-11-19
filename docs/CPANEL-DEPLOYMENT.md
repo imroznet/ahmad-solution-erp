@@ -29,7 +29,7 @@ GitHub Actions on this repository does all of the following:
 
 Download `ahmad-solution-erp-<git-sha>.zip` from the workflow artifacts. The zip contains `vendor`, `public/build`, `deploy/mysql-schema.sql`, `deploy/reference-data.sql`, `deploy/company-reference-data.sql`, the module upgrade scripts including `deploy/upgrade-tax-module.sql`, and no `.env`.
 
-`dompdf/dompdf` is included for quotation, delivery challan, and commercial invoice PDFs. It is pure PHP and uses `ext-dom` and `ext-mbstring`. It does not need `intl`, Imagick, or BCMath. Remote fetching is disabled. A PDF is generated for the request and is not stored under `public/`. DejaVu Sans does not include Bengali script, so a Bangla name may be missing from the PDF. The amount line still shows BDT and the `৳` amount. An issued challan or invoice PDF uses the company snapshot stored at issue and omits the live logo.
+`dompdf/dompdf` is included for quotation, delivery challan, commercial invoice, and Mushak PDFs. It is pure PHP and uses `ext-dom` and `ext-mbstring`. It does not need `intl`, Imagick, or BCMath. Remote fetching is disabled. A PDF is generated for the request and is not stored under `public/`. DejaVu Sans does not include Bengali script, so a Bangla name may be missing from the PDF. The taka sign is drawn from `resources/fonts/TakaSign.ttf`, a one-glyph subset of Noto Sans Bengali, because that single code point does not need shaping. Bengali words are still not drawn. An issued challan or invoice PDF uses the company snapshot stored at issue, including the logo copy taken then. A document issued before that copy was stored has no logo in the snapshot. The quotations upgrade script adds the quotation tax columns on a database that already has the quotation tables.
 
 ## Configure the environment
 
@@ -90,7 +90,9 @@ If the party tables are already imported and the quotation tables are not there,
 
 If the quotation tables are already imported and the delivery challan tables are not there, import `deploy/upgrade-delivery-documents-module.sql` once, after the quotations file. It creates the challan and commercial invoice tables if they are missing, including the superseded-line columns, adds the challan and invoice permissions, grants the default role set without deleting current grants, and records the three delivery-document migration names. A database that already imported the first version of these tables receives the history columns and the current-line unique keys. That repair does not delete line rows. Importing the file again does not duplicate those rows. A second import puts back a default challan or invoice grant that was removed after the first import. It does not remove a grant. Do not import `mysql-schema.sql` again.
 
-`artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role.
+If the document tables are already imported and the measurement-unit table is not there, import `deploy/upgrade-units-module.sql` once. It creates `units` if it is missing, adds `units.view` and `units.manage`, grants the default role set without deleting current grants, inserts the starter symbols, and records the units migration name. Importing it again does not duplicate those rows. A second import puts back a starter symbol that was deleted. It does not change unit text already stored on a quotation, challan, invoice, or Mushak line. Do not import `mysql-schema.sql` again.
+
+`artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role. The unit seeder fills the starter list only when the table is empty, so a later seed does not restore a symbol the owner deleted.
 
 ### First administrator
 

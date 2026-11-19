@@ -18,6 +18,7 @@ final class QuotationWriter
         private readonly QuotationLock $lock,
         private readonly QuotationNumberAllocator $numbers,
         private readonly QuotationCalculator $calculator,
+        private readonly QuotationTax $tax,
         private readonly QuotationSnapshotter $snapshots,
         private readonly AuditLogger $audit,
     ) {}
@@ -127,6 +128,7 @@ final class QuotationWriter
     {
         $lines = $this->calculator->normalizeLines($this->lineInput($input));
         [$quotationDate, $validUntil] = $this->dates($input);
+        $priced = $this->tax->price(array_column($lines, 'line_total'), $input, $this->calculator);
 
         return [
             'lines' => $lines,
@@ -138,10 +140,16 @@ final class QuotationWriter
                 'terms' => $this->nullableText($input, 'terms', 5000),
                 'customer_notes' => $this->nullableText($input, 'customer_notes', 5000),
                 'internal_notes' => $this->nullableText($input, 'internal_notes', 5000),
-                'tax_notice' => QuotationCalculator::taxNotice(),
-                'tax_treatment' => 'excluded',
-                'subtotal' => $this->calculator->sum(array_column($lines, 'line_total')),
-                'total' => $this->calculator->sum(array_column($lines, 'line_total')),
+                'tax_notice' => $priced['tax_notice'],
+                'tax_treatment' => $priced['tax_treatment'],
+                'subtotal' => $priced['subtotal'],
+                'total' => $priced['total'],
+                'vat_rate_percent' => $priced['vat_rate_percent'],
+                'tax_rate_percent' => $priced['tax_rate_percent'],
+                'vat_amount' => $priced['vat_amount'],
+                'tax_amount' => $priced['tax_amount'],
+                'adjustment_amount' => $priced['adjustment_amount'],
+                'adjustment_reason' => $priced['adjustment_reason'],
             ],
         ];
     }
@@ -305,6 +313,9 @@ final class QuotationWriter
             'total' => $revision->decimalAttribute('total'),
             'currency_code' => $revision->stringAttribute('currency_code'),
             'tax_treatment' => $revision->stringAttribute('tax_treatment'),
+            'vat_amount' => $revision->nullableDecimal('vat_amount'),
+            'tax_amount' => $revision->nullableDecimal('tax_amount'),
+            'adjustment_amount' => $revision->decimalAttribute('adjustment_amount'),
             'line_count' => $revision->lines()->count(),
         ];
     }

@@ -144,7 +144,39 @@ Not done, and not claimed:
 - An official VDS or AIT certificate
 - Journals, receivables, payables, receipts, or payments
 - Email, filing, or deployment
-- Bengali labels / font rendering in the Mushak 6.3 PDF, and a printed-layout check
+- Bengali words in PDFs. Dompdf does not shape Bengali. The taka sign alone is drawn from a one-glyph font. A different PDF renderer is not in use
+- A printed check of the Mushak 6.3 page against the current prescribed form after the owner approves the emblem taken from the confirmed form file
+
+## PDF letterhead and quotation tax
+
+Done in this branch:
+
+- An issued challan or invoice stores a private copy of the company logo and prints that copy. A later logo change does not change the issued PDF. A snapshot from before this copy has no logo
+- Quotation, challan, and invoice PDFs share a compact letterhead and a 10mm page margin. The Mushak PDF keeps the official-form header
+- A quotation revision can be VAT excluding or VAT including. Excluding keeps the line sum as the total and stores no tax. Including calculates VAT and a generic Tax % from what the user types, plus an optional adjustment that needs a reason when it is not zero. The page does not calculate the money. Rates are not prefilled. Blank is not zero
+- The commercial invoice still excludes tax. Its ceiling is the quotation subtotal, the line base
+- Mushak 6.3 PDF layout follows the owner-confirmed form in English: emblem, MUSAK-6.3 box, centred seller, buyer and issue details, the ten columns, the total row, and the authorised-person lines. Calculated values are unchanged. The page says it is not an NBR certification
+
+Not done, and not claimed:
+
+- Bengali labels on the Mushak. The English disclosure stays
+- Owner approval of the government emblem image before merge
+- Confirmation of the generic "Tax %" label. It is not treated as a named tax
+- Quotation tax at 3 or 4 decimal places. Quotation money columns stay at 2 decimal places, half up
+- Staging deploy. This branch does not upload to cPanel
+
+## Mobile layout, sidebar, and measurement units
+
+Done in this branch:
+
+- Wide tables scroll inside the page at phone and tablet width. The page itself does not scroll sideways. Line forms stack to one column below the desktop breakpoint. Buttons, links, and the menu meet a 44px tap height on smaller screens. The mobile menu closes after a link is tapped
+- The sidebar groups the same links under Sales, Tax, Parties, Company, and Administration. Each link keeps its current permission check. Dashboard stays above the groups. Units sits under Company. Approvals stays under Administration and is still gated by `quotations.approve`. A desktop control collapses the bar to icons and remembers that choice in the browser
+- A measurement-unit list can be viewed and managed with `units.view` and `units.manage`. Quotation, challan, invoice, and Mushak draft lines choose an active symbol or type another unit. The stored value is still the text on the line. An inactive unit is not offered for a new choice, and a line that already uses it is left as it is. There is no item, price, or stock list
+
+Not done, and not claimed:
+
+- A staging upload. This branch does not upload to cPanel
+- A product catalogue. Lines are still typed by hand
 
 ## Milestone 7 — accounting
 

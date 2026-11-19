@@ -77,19 +77,33 @@ final readonly class Money
     }
 
     /**
-     * Western three-digit grouping. Lakh/crore grouping is intentionally not
-     * applied until the company confirms the display convention.
+     * Western three-digit grouping, without a currency symbol.
+     * Lakh/crore grouping is intentionally not applied until the company
+     * confirms the display convention.
      */
-    public function format(): string
+    public function groupedAmount(): string
     {
         $raw = $this->amount();
         $negative = str_starts_with($raw, '-');
         $raw = ltrim($raw, '-');
         [$whole, $fraction] = explode('.', $raw, 2);
         $wholeWithGrouping = preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole) ?? $whole;
+
+        return ($negative ? '-' : '').$wholeWithGrouping.'.'.$fraction;
+    }
+
+    /**
+     * Western three-digit grouping. Lakh/crore grouping is intentionally not
+     * applied until the company confirms the display convention.
+     */
+    public function format(): string
+    {
+        $grouped = $this->groupedAmount();
+        $negative = str_starts_with($grouped, '-');
+        $body = ltrim($grouped, '-');
         $prefix = $this->currency === self::DEFAULT_CURRENCY ? '৳' : $this->currency.' ';
 
-        return ($negative ? '-' : '').$prefix.$wholeWithGrouping.'.'.$fraction;
+        return ($negative ? '-' : '').$prefix.$body;
     }
 
     private function assertSameCurrency(self $other): void

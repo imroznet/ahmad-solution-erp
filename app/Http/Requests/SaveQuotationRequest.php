@@ -61,6 +61,11 @@ class SaveQuotationRequest extends FormRequest
             'lines.*.unit' => ['required', 'string', 'max:40'],
             'lines.*.quantity' => ['required', 'string', 'max:20'],
             'lines.*.unit_price' => ['required', 'string', 'max:20'],
+            'tax_treatment' => ['nullable', 'in:excluded,included'],
+            'vat_rate_percent' => ['nullable', 'string', 'max:20'],
+            'tax_rate_percent' => ['nullable', 'string', 'max:20'],
+            'adjustment_amount' => ['nullable', 'string', 'max:24'],
+            'adjustment_reason' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -94,6 +99,10 @@ class SaveQuotationRequest extends FormRequest
             'terms',
             'customer_notes',
             'internal_notes',
+            'vat_rate_percent',
+            'tax_rate_percent',
+            'adjustment_amount',
+            'adjustment_reason',
         ]);
 
         $lines = $this->input('lines', []);

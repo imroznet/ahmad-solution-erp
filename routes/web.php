@@ -25,6 +25,7 @@ use App\Http\Controllers\QuotationWorkflowController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
 use App\Http\Controllers\TaxRuleController;
+use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -93,6 +94,19 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/system', SystemStatusController::class)
         ->middleware('permission:system.view')
         ->name('system.status');
+
+    Route::get('/units', [UnitController::class, 'index'])
+        ->middleware('permission:units.view')
+        ->name('units.index');
+    Route::post('/units', [UnitController::class, 'store'])
+        ->middleware('permission:units.manage')
+        ->name('units.store');
+    Route::put('/units/{unit}', [UnitController::class, 'update'])
+        ->middleware('permission:units.manage')
+        ->name('units.update');
+    Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
+        ->middleware('permission:units.manage')
+        ->name('units.destroy');
 
     Route::get('/company', [CompanyProfileController::class, 'show'])
         ->middleware('permission:company.view')
@@ -250,6 +264,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/quotations', [QuotationController::class, 'store'])
         ->middleware('permission:quotations.create')
         ->name('quotations.store');
+    Route::post('/quotations/calculate', [QuotationController::class, 'calculate'])
+        ->name('quotations.calculate');
     Route::get('/quotations/approvals', [QuotationApprovalController::class, 'index'])
         ->middleware('permission:quotations.approve')
         ->name('quotations.approvals');

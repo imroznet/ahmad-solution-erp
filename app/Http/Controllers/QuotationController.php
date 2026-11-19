@@ -176,6 +176,7 @@ class QuotationController extends Controller
             'canRevise' => $this->authorizer->canRevise($user, $quotation),
             'canSubmit' => $this->authorizer->canSubmit($user, $quotation),
             'canApprove' => $this->authorizer->canApprove($user, $quotation),
+            'approvingOwn' => $this->authorizer->preparedThisRevision($user, $revision),
             'canReturn' => $this->authorizer->canReturn($user, $quotation),
             'canSend' => $this->authorizer->canSend($user, $quotation),
             'canCancel' => $this->authorizer->canCancel($user, $quotation),

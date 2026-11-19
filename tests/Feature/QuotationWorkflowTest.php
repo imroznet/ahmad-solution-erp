@@ -39,7 +39,6 @@ class QuotationWorkflowTest extends TestCase
     {
         $sales = $this->userWithRole('sales-executive');
         $manager = $this->userWithRole('sales-manager');
-        $super = $this->userWithRole('super-administrator');
         $customer = $this->party();
         $supplier = $this->party('supplier', ['legal_name' => 'Only Supplier Ltd.']);
 
@@ -48,15 +47,16 @@ class QuotationWorkflowTest extends TestCase
         $year = now()->timezone('Asia/Dhaka')->format('Y');
         $this->assertSame('QT-'.$year.'-0001', Quotation::query()->sole()->number);
 
-        $own = $this->createQuotation($super, $customer);
-        $this->actingAs($super)->post(route('quotations.submit', $own))->assertRedirect();
-        $this->actingAs($super)->post(route('quotations.approve', $own))->assertForbidden();
+        $maker = $this->userWithRole('sales-manager', ['email' => 'maker@example.com']);
+        $own = $this->createQuotation($maker, $customer);
+        $this->actingAs($maker)->post(route('quotations.submit', $own))->assertRedirect();
+        $this->actingAs($maker)->post(route('quotations.approve', $own))->assertForbidden();
 
         try {
-            app(QuotationWorkflow::class)->approve($own->fresh() ?? $own, $super);
+            app(QuotationWorkflow::class)->approve($own->fresh() ?? $own, $maker);
             $this->fail('The creator must not approve their own revision.');
         } catch (QuotationRuleException $exception) {
-            $this->assertStringContainsString('cannot approve', $exception->getMessage());
+            $this->assertSame('The person who created this revision cannot approve it.', $exception->getMessage());
         }
 
         $this->assertSame(QuotationStatus::SUBMITTED, $own->fresh()?->status);

@@ -4,9 +4,9 @@ namespace App\Quotations;
 
 use App\Models\Quotation;
 use App\Models\User;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class QuotationListing
 {

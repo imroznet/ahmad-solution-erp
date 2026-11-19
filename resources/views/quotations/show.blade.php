@@ -75,7 +75,11 @@
                 <form method="POST" action="{{ route('quotations.approve', $quotation) }}" class="rounded border border-line bg-white p-4">
                     @csrf
                     <h2 class="text-sm font-medium">Approve</h2>
-                    <p class="mt-1 text-sm text-muted">You cannot approve a revision you created or submitted.</p>
+                    @if ($approvingOwn && $currentUser?->hasPermission('quotations.approve_own'))
+                        <p class="mt-1 text-sm text-muted">You created or submitted this revision. Approving it is recorded in your name.</p>
+                    @elseif (! $currentUser?->hasPermission('quotations.approve_own'))
+                        <p class="mt-1 text-sm text-muted">You cannot approve a revision you created or submitted.</p>
+                    @endif
                     <label for="approve-remarks" class="mt-3 block text-sm">Remarks <span class="text-muted">(optional)</span></label>
                     <textarea id="approve-remarks" name="remarks" rows="2" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm"></textarea>
                     <button type="submit" class="mt-3 rounded bg-brand px-3 py-2 text-sm font-medium text-white">Approve</button>
@@ -175,6 +179,9 @@
                 @foreach ($revision->approvals as $approval)
                     <li class="rounded border border-line bg-white px-3 py-2">
                         {{ $approval->actionLabel() }} · {{ $approval->user?->name }} · {{ $approval->created_at?->timezone('Asia/Dhaka')->format('d M Y H:i') }}
+                        @if ($approval->action === 'approved' && $approval->user && ((int) $approval->user_id === (int) $revision->created_by || (int) $approval->user_id === (int) $revision->approvals->where('action', 'submitted')->sortByDesc('id')->first()?->user_id))
+                            <span class="block text-muted">Recorded as an approval by the person who created or submitted this revision.</span>
+                        @endif
                         @if ($approval->remarks)<span class="block text-muted">{{ $approval->remarks }}</span>@endif
                     </li>
                 @endforeach

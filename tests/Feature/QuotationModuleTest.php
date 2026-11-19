@@ -166,7 +166,10 @@ class QuotationModuleTest extends TestCase
         $this->assertFalse($sales->permissions->contains('slug', 'customers.view'));
         $this->assertTrue($sales->permissions->contains('slug', 'quotations.view'));
         $this->assertFalse($sales->permissions->contains('slug', 'quotations.approve'));
+        $this->assertFalse($sales->permissions->contains('slug', 'quotations.approve_own'));
         $this->assertFalse($sales->permissions->contains('slug', 'suppliers.view'));
+        $super = Role::query()->where('slug', 'super-administrator')->firstOrFail();
+        $this->assertTrue($super->permissions->contains('slug', 'quotations.approve_own'));
     }
 
     public function test_quotations_upgrade_sql_matches_the_committed_file(): void

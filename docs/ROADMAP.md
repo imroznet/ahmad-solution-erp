@@ -81,7 +81,7 @@ Done in this branch:
 - A response after the validity date expires an unanswered sent or approved revision and does not store a response. The validity date itself can still be accepted or rejected
 - States: draft, submitted for approval, approved, sent, accepted, rejected, expired, and cancelled. Only the listed transitions are allowed
 - A new revision from an approved, sent, rejected, or expired quotation. The previous revision, its lines, snapshot, terms, and totals stay
-- Approval by someone other than the revision's creator and latest submitter, including a super administrator
+- Approval by someone other than the revision's creator and latest submitter. A role with `quotations.approve_own` may approve its own quotation. The super administrator has that permission. Other roles receive it only from the Roles page
 - An explicit send record. Email is not sent
 - A share link whose raw token is shown once. The database stores the SHA-256 hash, an expiry, and revocation. The public page can record one acceptance or rejection for the current sent revision
 - A PDF of the revision being viewed, rendered when requested and not stored under `public/`
@@ -177,6 +177,21 @@ Not done, and not claimed:
 
 - A staging upload. This branch does not upload to cPanel
 - A product catalogue. Lines are still typed by hand
+
+## Quotation self-approval
+
+Done in this branch:
+
+- `quotations.approve_own` is a Quotations permission. The Roles page shows it as Approve own quotations. Ticking it is audited as `role_permissions_updated`. Unticking it removes the exception
+- A user with `quotations.approve` can approve a submitted quotation. The creator and latest-submitter block remains unless that user also has `quotations.approve_own`. The same error messages stay for a role without the exception
+- The super administrator keeps every permission, so that role can approve its own quotation. No other role receives the exception unless it is ticked
+- The approval queue shows Approve on a row only when that user can approve it, including their own row when the role allows it. The quotation history names the approver, and a self-approval says the approver created or submitted the revision. The audit log records `quotation_approved` against that user
+- Returning a quotation to draft is unchanged
+
+Not done, and not claimed:
+
+- A staging upload. This branch does not upload to cPanel
+- Self-approval for any document other than a quotation
 
 ## Milestone 7 — accounting
 

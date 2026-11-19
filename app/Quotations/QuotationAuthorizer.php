@@ -3,6 +3,7 @@
 namespace App\Quotations;
 
 use App\Models\Quotation;
+use App\Models\QuotationApproval;
 use App\Models\QuotationRevision;
 use App\Models\User;
 
@@ -68,14 +69,49 @@ final class QuotationAuthorizer
             return false;
         }
 
+        return $this->selfApprovalRefusal($user, $revision) === null;
+    }
+
+    public function preparedThisRevision(User $user, QuotationRevision $revision): bool
+    {
         if ((int) $revision->created_by === (int) $user->getKey()) {
-            return false;
+            return true;
         }
 
+        return $this->latestSubmitterId($revision) === (int) $user->getKey();
+    }
+
+    /**
+     * A holder of quotations.approve may still be blocked from a revision they
+     * created or submitted. quotations.approve_own lifts that block only.
+     */
+    public function selfApprovalRefusal(User $user, QuotationRevision $revision): ?string
+    {
+        if ($user->hasPermission('quotations.approve_own')) {
+            return null;
+        }
+
+        if ((int) $revision->created_by === (int) $user->getKey()) {
+            return 'The person who created this revision cannot approve it.';
+        }
+
+        if ($this->latestSubmitterId($revision) === (int) $user->getKey()) {
+            return 'The person who submitted this revision cannot approve it.';
+        }
+
+        return null;
+    }
+
+    private function latestSubmitterId(QuotationRevision $revision): ?int
+    {
         $revision->loadMissing('approvals');
         $submission = $revision->approvals->where('action', 'submitted')->sortByDesc('id')->first();
 
-        return $submission === null || (int) $submission->user_id !== (int) $user->getKey();
+        if (! $submission instanceof QuotationApproval || $submission->user_id === null) {
+            return null;
+        }
+
+        return (int) $submission->user_id;
     }
 
     public function canReturn(User $user, Quotation $quotation): bool

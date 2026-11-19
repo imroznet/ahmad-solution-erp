@@ -89,6 +89,7 @@ final class PermissionCatalog
             self::permission(70, 'Void AIT records', 'ait.void', 'AIT', 'Void an AIT record. The record is kept.'),
             self::permission(71, 'View measurement units', 'units.view', 'Units', 'View the measurement unit list used on quotation, challan, invoice, and Mushak lines.'),
             self::permission(72, 'Manage measurement units', 'units.manage', 'Units', 'Create, edit, deactivate, and delete measurement units. Existing line text is not rewritten.'),
+            self::permission(73, 'Approve own quotations', 'quotations.approve_own', 'Quotations', 'Approve a submitted quotation the user created or submitted themself. Without it, a user can only approve quotations prepared by someone else.'),
         ];
     }
 

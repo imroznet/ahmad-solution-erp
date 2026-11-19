@@ -19,6 +19,7 @@ final class QuotationWorkflow
     public function __construct(
         private readonly QuotationLock $lock,
         private readonly AuditLogger $audit,
+        private readonly QuotationAuthorizer $authorizer,
     ) {}
 
     public function submit(Quotation $quotation, User $actor, ?string $remarks = null): void
@@ -279,18 +280,10 @@ final class QuotationWorkflow
 
     private function assertCanApprove(QuotationRevision $revision, User $actor): void
     {
-        if ((int) $revision->created_by === (int) $actor->getKey()) {
-            throw new QuotationRuleException('quotation', 'The person who created this revision cannot approve it.');
-        }
+        $refusal = $this->authorizer->selfApprovalRefusal($actor, $revision);
 
-        $submitter = QuotationApproval::query()
-            ->where('quotation_revision_id', $revision->getKey())
-            ->where('action', 'submitted')
-            ->latest('id')
-            ->value('user_id');
-
-        if ($submitter !== null && (int) $submitter === (int) $actor->getKey()) {
-            throw new QuotationRuleException('quotation', 'The person who submitted this revision cannot approve it.');
+        if ($refusal !== null) {
+            throw new QuotationRuleException('quotation', $refusal);
         }
     }
 

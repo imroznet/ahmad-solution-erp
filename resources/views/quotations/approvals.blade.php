@@ -1,6 +1,6 @@
 <x-layouts.app title="Quotation approvals">
     <h1 class="text-xl font-semibold">Approval queue</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Submitted quotations waiting for someone other than the creator to approve them. Returning a quotation sends that revision back to draft.</p>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Submitted quotations waiting for approval. Approve is shown when this role can approve that quotation. A role can approve its own quotation only when Approve own quotations is ticked. Returning a quotation sends that revision back to draft.</p>
 
     <div class="mt-4 overflow-x-auto rounded border border-line bg-white">
         <table class="min-w-full text-sm">
@@ -11,6 +11,7 @@
                     <th class="px-3 py-2 font-medium">Date</th>
                     <th class="px-3 py-2 text-right font-medium">Total</th>
                     <th class="px-3 py-2 font-medium">Created by</th>
+                    <th class="px-3 py-2 font-medium">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -21,10 +22,15 @@
                         <td class="px-3 py-2">{{ $quotation->currentRevision?->quotation_date?->format('d M Y') }}</td>
                         <td class="px-3 py-2 text-right">{{ $quotation->currentRevision?->totalMoney()->format() }}</td>
                         <td class="px-3 py-2">{{ $quotation->createdBy?->name }}</td>
+                        <td class="px-3 py-2">
+                            @if ($canApprove[$quotation->id] ?? false)
+                                <a href="{{ route('quotations.show', $quotation) }}" class="inline-flex min-h-11 items-center font-medium text-brand">Approve</a>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-3 py-4 text-muted">Nothing is waiting for approval.</td>
+                        <td colspan="6" class="px-3 py-4 text-muted">Nothing is waiting for approval.</td>
                     </tr>
                 @endforelse
             </tbody>

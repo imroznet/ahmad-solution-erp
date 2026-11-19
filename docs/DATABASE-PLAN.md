@@ -17,6 +17,7 @@ The staging database is `ahmadcom_asl_erp`. The host and password come from `.en
 | `company_profiles` | The single company identity. TIN and BIN are stored as entered. |
 | `company_addresses` | Registered office, corporate office, and other addresses. Closed rows are kept. |
 | `document_categories` | System and custom categories. System rows are not deleted. |
+| `units` | Measurement names and symbols for hand-typed lines. A line stores the symbol as text, not a foreign key. Deactivating a unit hides it from new choices. |
 | `company_documents` | Document metadata. Retirement is a soft delete. |
 | `company_document_versions` | One stored file per version. Paths are random names on the private disk. |
 | `parties` | One organisation. TIN, BIN, and VAT registration number are strings. `currency_code` is BDT. `status` is active, inactive, or archived. |

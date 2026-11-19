@@ -67,7 +67,7 @@ final class QuotationCalculator
                 throw new QuotationRuleException('lines.'.$index.'.description', 'A line description must be 2000 characters or fewer.');
             }
 
-            if ($unit === '' || mb_strlen($unit) > 40) {
+            if ($unit === '' || $unit === '__other__' || mb_strlen($unit) > 40) {
                 throw new QuotationRuleException('lines.'.$index.'.unit', 'Enter a unit of 40 characters or fewer.');
             }
 

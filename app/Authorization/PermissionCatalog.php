@@ -87,6 +87,8 @@ final class PermissionCatalog
             self::permission(68, 'Create AIT records', 'ait.create', 'AIT', 'Create an AIT record. The amount is entered, not calculated.'),
             self::permission(69, 'Update AIT records', 'ait.update', 'AIT', 'Edit a draft AIT record.'),
             self::permission(70, 'Void AIT records', 'ait.void', 'AIT', 'Void an AIT record. The record is kept.'),
+            self::permission(71, 'View measurement units', 'units.view', 'Units', 'View the measurement unit list used on quotation, challan, invoice, and Mushak lines.'),
+            self::permission(72, 'Manage measurement units', 'units.manage', 'Units', 'Create, edit, deactivate, and delete measurement units. Existing line text is not rewritten.'),
         ];
     }
 
@@ -178,6 +180,8 @@ final class PermissionCatalog
                     'ait.create',
                     'ait.update',
                     'ait.void',
+                    'units.view',
+                    'units.manage',
                 ],
             ],
             [
@@ -235,6 +239,8 @@ final class PermissionCatalog
                     'ait.create',
                     'ait.update',
                     'ait.void',
+                    'units.view',
+                    'units.manage',
                 ],
             ],
             [
@@ -278,6 +284,7 @@ final class PermissionCatalog
                     'ait.view',
                     'ait.create',
                     'ait.update',
+                    'units.view',
                 ],
             ],
             [
@@ -317,6 +324,7 @@ final class PermissionCatalog
                     'invoices.pdf',
                     'mushak.view',
                     'mushak.pdf',
+                    'units.view',
                 ],
             ],
             [
@@ -352,6 +360,7 @@ final class PermissionCatalog
                     'invoices.pdf',
                     'mushak.view',
                     'mushak.pdf',
+                    'units.view',
                 ],
             ],
             [

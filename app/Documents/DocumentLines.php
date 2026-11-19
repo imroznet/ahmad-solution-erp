@@ -10,6 +10,7 @@ use App\Models\QuotationRevision;
 use App\Quotations\QuotationCalculator;
 use App\Support\Decimal;
 use App\Support\Money;
+use App\Units\UnitLabel;
 
 /**
  * Builds challan and invoice lines from the accepted revision.
@@ -65,7 +66,7 @@ final class DocumentLines
                 'quotation_line_id' => $lineId,
                 'position' => $position,
                 'description' => $this->text($source, 'description'),
-                'unit' => $this->text($source, 'unit'),
+                'unit' => $this->chosenUnit($input, $index, $this->text($source, 'unit')),
                 'quantity' => $row['quantity'],
                 'accepted_quantity' => $accepted,
             ];
@@ -179,7 +180,7 @@ final class DocumentLines
                 'quotation_line_id' => $quotationLineId,
                 'position' => $position,
                 'description' => $this->text($source, 'description'),
-                'unit' => $this->text($source, 'unit'),
+                'unit' => $this->chosenUnit($input, $index, $this->text($source, 'unit')),
                 'quantity' => $row['quantity'],
                 'unit_price' => $source->decimalAttribute('unit_price'),
                 'line_total' => $lineTotal,
@@ -227,6 +228,7 @@ final class DocumentLines
             $lines[] = [
                 'delivery_challan_line_id' => (int) $line->delivery_challan_line_id,
                 'quantity' => $line->decimalAttribute('quantity'),
+                'unit' => $line->stringAttribute('unit'),
             ];
         }
 
@@ -253,6 +255,28 @@ final class DocumentLines
         $text = $this->text($line, 'description');
 
         return mb_strlen($text) > 80 ? mb_substr($text, 0, 77).'...' : $text;
+    }
+
+    /**
+     * A posted unit replaces the copied text. A missing field keeps the source
+     * line, so an older form that does not send a unit is unchanged.
+     */
+    private function chosenUnit(array $input, int $index, string $fallback): string
+    {
+        $lines = $input['lines'] ?? null;
+        $row = is_array($lines) ? ($lines[$index] ?? null) : null;
+
+        if (! is_array($row) || ! array_key_exists('unit', $row)) {
+            return $fallback;
+        }
+
+        $unit = UnitLabel::fromSubmitted($row['unit']);
+
+        if ($unit === null) {
+            throw new DocumentRuleException('lines.'.$index.'.unit', 'Enter a unit of 40 characters or fewer.');
+        }
+
+        return $unit;
     }
 
     private function text(QuotationLine $line, string $key): string

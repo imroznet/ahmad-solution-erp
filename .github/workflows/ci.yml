@@ -101,7 +101,8 @@ jobs:
           php artisan asl:export-quotations-sql
           php artisan asl:export-delivery-documents-sql
           php artisan asl:export-tax-sql
-          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-module.sql
+          php artisan asl:export-units-sql
+          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-module.sql deploy/upgrade-units-module.sql
           cat > /tmp/mysql-client.cnf <<'EOF'
           [client]
           host=127.0.0.1
@@ -145,6 +146,17 @@ jobs:
           test "$vds_permissions" = "4"
           ait_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='AIT'" asl_erp)
           test "$ait_permissions" = "4"
+          unit_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Units'" asl_erp)
+          test "$unit_permissions" = "2"
+          sales_unit_manage=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='units.manage'" asl_erp)
+          test "$sales_unit_manage" = "0"
+          unit_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM units" asl_erp)
+          test "$unit_rows" = "14"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf -e "DELETE FROM units" asl_erp
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-units-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-units-module.sql
+          unit_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM units" asl_erp)
+          test "$unit_rows" = "14"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in

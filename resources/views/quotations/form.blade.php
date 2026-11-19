@@ -4,6 +4,22 @@
         if (! is_array($initialLines) || $initialLines === []) {
             $initialLines = [['description' => '', 'unit' => '', 'quantity' => '1', 'unit_price' => '0.00']];
         }
+        $unitSymbols = [];
+        foreach ($unitChoices ?? [] as $unitChoice) {
+            if (is_array($unitChoice) && isset($unitChoice['symbol'])) {
+                $unitSymbols[] = (string) $unitChoice['symbol'];
+            }
+        }
+        foreach ($initialLines as $index => $line) {
+            if (! is_array($line)) {
+                continue;
+            }
+            $unit = trim(strip_tags((string) ($line['unit'] ?? '')));
+            $known = $unit !== '' && in_array($unit, $unitSymbols, true);
+            $initialLines[$index]['unit'] = $unit;
+            $initialLines[$index]['unitChoice'] = $unit === '' ? '' : ($known ? $unit : '__other__');
+            $initialLines[$index]['unitCustom'] = $known || $unit === '' ? '' : $unit;
+        }
         $action = $mode === 'create'
             ? route('quotations.store')
             : ($mode === 'revise' ? route('quotations.revisions.store', $quotation) : route('quotations.update', $quotation));
@@ -111,29 +127,39 @@
         </div>
 
         <div x-data="{ lines: {{ \Illuminate\Support\Js::from($initialLines) }}, max: {{ (int) config('asl.quotations.max_lines', 50) }} }" class="space-y-3">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-sm font-medium">Lines</h2>
-                <button type="button" class="rounded border border-line px-3 py-2 text-sm" @click="if (lines.length < max) lines.push({description: '', unit: '', quantity: '1', unit_price: '0.00'})">Add line</button>
+                <button type="button" class="rounded border border-line px-3 py-2 text-sm" @click="if (lines.length < max) lines.push({description: '', unit: '', unitChoice: '', unitCustom: '', quantity: '1', unit_price: '0.00'})">Add line</button>
             </div>
             <template x-for="(line, index) in lines" :key="index">
-                <div class="grid gap-3 rounded border border-line bg-white p-3 sm:grid-cols-12">
-                    <div class="sm:col-span-5">
+                <div class="grid gap-3 rounded border border-line bg-white p-3 lg:grid-cols-12">
+                    <div class="lg:col-span-5">
                         <label class="block text-sm font-medium" :for="'description-' + index">Description</label>
                         <textarea :id="'description-' + index" :name="'lines[' + index + '][description]'" x-model="line.description" rows="2" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm"></textarea>
                     </div>
-                    <div class="sm:col-span-2">
+                    <div class="lg:col-span-2">
                         <label class="block text-sm font-medium" :for="'unit-' + index">Unit</label>
-                        <input :id="'unit-' + index" :name="'lines[' + index + '][unit]'" x-model="line.unit" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
+                        <select :id="'unit-' + index" x-model="line.unitChoice" @change="line.unit = line.unitChoice === '__other__' ? line.unitCustom.trim() : line.unitChoice" class="mt-1 w-full rounded border border-line bg-white px-3 py-2 text-sm">
+                            <option value="">Choose a unit</option>
+                            @foreach ($unitChoices ?? [] as $unitOption)
+                                @if (is_array($unitOption) && isset($unitOption['symbol'], $unitOption['name']))
+                                    <option value="{{ $unitOption['symbol'] }}">{{ $unitOption['name'] }} ({{ $unitOption['symbol'] }})</option>
+                                @endif
+                            @endforeach
+                            <option value="__other__">Other…</option>
+                        </select>
+                        <input x-show="line.unitChoice === '__other__'" x-cloak x-model="line.unitCustom" maxlength="40" placeholder="Type the unit" aria-label="Custom unit" @input="line.unit = line.unitCustom.trim()" class="mt-2 w-full rounded border border-line px-3 py-2 text-sm">
+                        <input type="hidden" :name="'lines[' + index + '][unit]'" :value="line.unit">
                     </div>
-                    <div class="sm:col-span-2">
+                    <div class="lg:col-span-2">
                         <label class="block text-sm font-medium" :for="'quantity-' + index">Quantity</label>
                         <input :id="'quantity-' + index" :name="'lines[' + index + '][quantity]'" x-model="line.quantity" inputmode="decimal" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
                     </div>
-                    <div class="sm:col-span-2">
+                    <div class="lg:col-span-2">
                         <label class="block text-sm font-medium" :for="'price-' + index">Unit price</label>
                         <input :id="'price-' + index" :name="'lines[' + index + '][unit_price]'" x-model="line.unit_price" inputmode="decimal" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
                     </div>
-                    <div class="flex items-end sm:col-span-1">
+                    <div class="flex items-end lg:col-span-1">
                         <button type="button" class="text-sm text-muted" @click="if (lines.length > 1) lines.splice(index, 1)">Remove</button>
                     </div>
                 </div>
@@ -248,8 +274,10 @@
                         return el ? el.value : '';
                     };
                     const described = lines.some((line) => line.description.trim() !== '');
+                    // Choosing Other… before the unit is typed must not call the server.
+                    const unitMissing = lines.some((line) => line.description.trim() !== '' && line.unit.trim() === '');
                     return {
-                        skip: !described,
+                        skip: !described || unitMissing,
                         lines,
                         tax_treatment: this.treatment,
                         vat_rate_percent: field('vat_rate_percent'),

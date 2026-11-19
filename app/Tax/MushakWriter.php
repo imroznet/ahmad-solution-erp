@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Parties\PartyAuthorizer;
 use App\Services\AuditLogger;
 use App\Support\Decimal;
+use App\Units\UnitLabel;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
 
@@ -302,6 +303,16 @@ final class MushakWriter
             }
 
             $description = $this->optionalText($row['description'] ?? null) ?? $line->stringAttribute('source_description');
+
+            if (array_key_exists('unit', $row)) {
+                $unit = UnitLabel::fromSubmitted($row['unit']);
+
+                if ($unit === null) {
+                    throw new TaxRuleException('unit', 'Enter a unit of 40 characters or fewer.');
+                }
+
+                $line->unit = $unit;
+            }
             $result = $this->calculator->calculate(
                 base: $this->inputString($row['base_amount'] ?? null, 'base_amount'),
                 rate: $this->nullableString($row['vat_rate'] ?? null),

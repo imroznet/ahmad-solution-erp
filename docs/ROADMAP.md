@@ -165,6 +165,19 @@ Not done, and not claimed:
 - Quotation tax at 3 or 4 decimal places. Quotation money columns stay at 2 decimal places, half up
 - Staging deploy. This branch does not upload to cPanel
 
+## Mobile layout, sidebar, and measurement units
+
+Done in this branch:
+
+- Wide tables scroll inside the page at phone and tablet width. The page itself does not scroll sideways. Line forms stack to one column below the desktop breakpoint. Buttons, links, and the menu meet a 44px tap height on smaller screens. The mobile menu closes after a link is tapped
+- The sidebar groups the same links under Sales, Tax, Parties, Company, and Administration. Each link keeps its current permission check. Dashboard stays above the groups. Units sits under Company. Approvals stays under Administration and is still gated by `quotations.approve`. A desktop control collapses the bar to icons and remembers that choice in the browser
+- A measurement-unit list can be viewed and managed with `units.view` and `units.manage`. Quotation, challan, invoice, and Mushak draft lines choose an active symbol or type another unit. The stored value is still the text on the line. An inactive unit is not offered for a new choice, and a line that already uses it is left as it is. There is no item, price, or stock list
+
+Not done, and not claimed:
+
+- A staging upload. This branch does not upload to cPanel
+- A product catalogue. Lines are still typed by hand
+
 ## Milestone 7 — accounting
 
 - Chart of accounts, journals, receipts, payments, and allocations

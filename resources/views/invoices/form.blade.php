@@ -54,7 +54,10 @@
                         @foreach ($rows as $index => $row)
                             <tr class="border-t border-line">
                                 <td class="px-3 py-2">{{ $row['challan'] }}</td>
-                                <td class="px-3 py-2">{{ $row['description'] }} <span class="text-muted">{{ $row['unit'] }}</span></td>
+                                <td class="px-3 py-2">
+                                    {{ $row['description'] }}
+                                    <x-unit-field :name="'lines['.$index.'][unit]'" :value="old('lines.'.$index.'.unit', $row['unit'])" :choices="$unitChoices" />
+                                </td>
                                 <td class="px-3 py-2">{{ $row['delivered'] }}</td>
                                 <td class="px-3 py-2">{{ $row['invoiced'] }}</td>
                                 <td class="px-3 py-2">

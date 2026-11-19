@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Authorization\PermissionCatalog;
 use App\Models\CompanyProfile;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Auth\Events\Failed;
@@ -83,6 +84,15 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('currentUser', $user instanceof User ? $user : null);
             $view->with('companyLegalName', is_string($companyName) ? $companyName : 'Ahmad Solution Ltd.');
+        });
+
+        View::composer([
+            'quotations.form',
+            'challans.form',
+            'invoices.form',
+            'tax.mushak.form',
+        ], function ($view): void {
+            $view->with('unitChoices', Unit::choices());
         });
 
         Event::listen(Login::class, function (Login $event): void {

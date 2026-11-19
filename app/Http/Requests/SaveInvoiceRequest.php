@@ -57,6 +57,7 @@ class SaveInvoiceRequest extends FormRequest
             'lines' => ['required', 'array', 'min:1', 'max:'.$maxLines],
             'lines.*.delivery_challan_line_id' => ['required', 'integer'],
             'lines.*.quantity' => ['nullable', 'string', 'max:20'],
+            'lines.*.unit' => ['sometimes', 'nullable', 'string', 'max:40'],
         ];
     }
 

@@ -62,6 +62,7 @@ class SaveChallanRequest extends FormRequest
             'lines' => ['required', 'array', 'min:1', 'max:'.$maxLines],
             'lines.*.quotation_line_id' => ['required', 'integer'],
             'lines.*.quantity' => ['nullable', 'string', 'max:20'],
+            'lines.*.unit' => ['sometimes', 'nullable', 'string', 'max:40'],
         ];
     }
 

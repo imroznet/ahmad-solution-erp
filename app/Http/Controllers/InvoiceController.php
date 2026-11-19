@@ -145,12 +145,14 @@ class InvoiceController extends Controller
         $revision = $quotation->currentRevision;
         abort_unless($revision instanceof QuotationRevision, 404);
         $saved = [];
+        $savedUnit = [];
 
         if ($invoice instanceof CommercialInvoice) {
             $invoice->loadMissing('lines');
 
             foreach ($invoice->lines as $line) {
                 $saved[(int) $line->delivery_challan_line_id] = $line->quantityLabel();
+                $savedUnit[(int) $line->delivery_challan_line_id] = $line->stringAttribute('unit');
             }
         }
 
@@ -188,7 +190,7 @@ class InvoiceController extends Controller
                 'id' => $lineId,
                 'challan' => $line->challan?->displayNumber() ?? 'Challan',
                 'description' => $line->stringAttribute('description'),
-                'unit' => $line->stringAttribute('unit'),
+                'unit' => $savedUnit[$lineId] ?? $line->stringAttribute('unit'),
                 'delivered' => $line->quantityLabel(),
                 'invoiced' => QuotationCalculator::formatQuantity($invoiced),
                 'quantity' => $old[$lineId] ?? $default,

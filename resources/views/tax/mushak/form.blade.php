@@ -90,7 +90,8 @@
                             <td class="px-3 py-2">
                                 <input type="hidden" name="lines[{{ $index }}][id]" value="{{ $line->id }}">
                                 <textarea name="lines[{{ $index }}][description]" class="w-48 rounded border border-line px-2 py-1" rows="2">{{ $line->description }}</textarea>
-                                <p class="mt-1 text-xs text-muted">{{ $line->quantity }} {{ $line->unit }}</p>
+                                <p class="mt-1 text-xs text-muted">Quantity {{ $line->quantity }}</p>
+                                <x-unit-field :name="'lines['.$index.'][unit]'" :value="old('lines.'.$index.'.unit', $line->unit)" :choices="$unitChoices" />
                             </td>
                             <td class="px-3 py-2"><input name="lines[{{ $index }}][base_amount]" value="{{ $line->base_amount }}" data-field="base_amount" inputmode="decimal" class="w-28 rounded border border-line px-2 py-1" @input="edited({{ $index }}, 'base')" @blur="preview({{ $index }}, true)"></td>
                             <td class="px-3 py-2"><input name="lines[{{ $index }}][vat_rate]" value="{{ $line->vat_rate_percent }}" data-field="vat_rate" inputmode="decimal" class="w-24 rounded border border-line px-2 py-1" placeholder="Blank" @input="edited({{ $index }}, 'base')" @blur="preview({{ $index }}, true)"></td>

@@ -14,6 +14,52 @@
     --color-line: #d5ddd8;
 }
 
+html,
+body {
+    overflow-x: clip;
+}
+
+main .overflow-x-auto {
+    max-width: 100%;
+}
+
+@media (min-width: 64rem) {
+    .app-shell {
+        display: grid;
+        grid-template-columns: 16rem minmax(0, 1fr);
+    }
+
+    html[data-sidebar='collapsed'] .app-shell {
+        grid-template-columns: 4.5rem minmax(0, 1fr);
+    }
+
+    html[data-sidebar='collapsed'] .nav-copy {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+}
+
+@media (max-width: 1023px) {
+    main :is(a, button, input:not([type='checkbox']):not([type='radio']):not([type='hidden']), select, textarea) {
+        min-height: 2.75rem;
+    }
+
+    main textarea {
+        min-height: 5.5rem;
+    }
+
+    main :is(td, th) {
+        overflow-wrap: anywhere;
+    }
+}
+
 [x-cloak] {
     display: none !important;
 }

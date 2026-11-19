@@ -36,7 +36,7 @@ final class InvoiceWorkflow
                 throw new DocumentRuleException('invoice', 'The invoice must use the accepted revision of the quotation.');
             }
             $prepared = $this->lines->forInvoice($revision, $quotationId, $input, (int) $invoice->getKey());
-            $total = $this->lines->total($prepared, $quotationId, $revision->decimalAttribute('total'), (int) $invoice->getKey());
+            $total = $this->lines->total($prepared, $quotationId, $revision->decimalAttribute('subtotal'), (int) $invoice->getKey());
             $this->reprice($invoice, $prepared, $total);
             $invoice->fill([
                 'number' => $this->numbers->allocate(DocumentNumberAllocator::INVOICE),

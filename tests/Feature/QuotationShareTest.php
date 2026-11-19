@@ -252,7 +252,10 @@ class QuotationShareTest extends TestCase
 
         $this->assertStringContainsString('Padma Engineering Ltd.', $html);
         $this->assertStringContainsString('Network survey', $html);
-        $this->assertStringContainsString('৳3,001.00', $html);
+        $this->assertStringContainsString('3,001.00', $html);
+        $this->assertStringContainsString('class="taka"', $html);
+        $this->assertStringContainsString('VAT exclusive', $html);
+        $this->assertStringContainsString('margin: 10mm', $html);
         $this->assertStringNotContainsString('SECRET-NOTE', $html);
 
         $pdf = $this->actingAs($sales)->get(route('quotations.pdf', [

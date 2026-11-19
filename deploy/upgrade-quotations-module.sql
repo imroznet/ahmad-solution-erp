@@ -1,7 +1,7 @@
 -- Ahmad Solution Ltd. ERP quotations upgrade.
 -- Use this when the party tables are already imported and the quotation tables are not.
 -- A clean database should import mysql-schema.sql, reference-data.sql, and company-reference-data.sql instead.
--- This script creates the quotation tables, adds the quotation permissions, and grants the default role set.
+-- This script creates the quotation tables, adds the quotation tax columns when those tables already exist, adds the quotation permissions, and grants the default role set.
 -- It does not delete rows, grants, or customized permissions. It is safe to import again.
 -- It expects users, roles, permissions, permission_role, parties, and migrations.
 
@@ -65,6 +65,12 @@ CREATE TABLE IF NOT EXISTS `quotation_revisions` (
   `tax_treatment` varchar(40) NOT NULL,
   `subtotal` decimal(18,2) NOT NULL,
   `total` decimal(18,2) NOT NULL,
+  `vat_rate_percent` decimal(7,4) DEFAULT NULL,
+  `tax_rate_percent` decimal(7,4) DEFAULT NULL,
+  `vat_amount` decimal(18,2) DEFAULT NULL,
+  `tax_amount` decimal(18,2) DEFAULT NULL,
+  `adjustment_amount` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `adjustment_reason` text,
   `cancel_reason` text,
   `cancelled_at` timestamp NULL DEFAULT NULL,
   `cancelled_by` bigint unsigned DEFAULT NULL,
@@ -184,6 +190,20 @@ CREATE TABLE IF NOT EXISTS `quotation_share_access_logs` (
   KEY `quotation_share_access_logs_token_index` (`quotation_share_token_id`, `id`),
   CONSTRAINT `quotation_share_access_logs_token_foreign` FOREIGN KEY (`quotation_share_token_id`) REFERENCES `quotation_share_tokens` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add quotation tax columns on a database created before VAT-including quotations.
+SET @quotation_tax := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'quotation_revisions'
+    AND COLUMN_NAME = 'vat_rate_percent'
+);
+SET @sql := IF(@quotation_tax = 0,
+  'ALTER TABLE `quotation_revisions` ADD COLUMN `vat_rate_percent` decimal(7,4) DEFAULT NULL AFTER `total`, ADD COLUMN `tax_rate_percent` decimal(7,4) DEFAULT NULL AFTER `vat_rate_percent`, ADD COLUMN `vat_amount` decimal(18,2) DEFAULT NULL AFTER `tax_rate_percent`, ADD COLUMN `tax_amount` decimal(18,2) DEFAULT NULL AFTER `vat_amount`, ADD COLUMN `adjustment_amount` decimal(18,2) NOT NULL DEFAULT 0.00 AFTER `tax_amount`, ADD COLUMN `adjustment_reason` text AFTER `adjustment_amount`',
+  'SELECT 1');
+PREPARE quotation_tax_columns FROM @sql;
+EXECUTE quotation_tax_columns;
+DEALLOCATE PREPARE quotation_tax_columns;
 
 INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `description`, `created_at`, `updated_at`)
 SELECT 29, 'View quotations', 'quotations.view', 'Quotations', 'View quotations for customers this user is allowed to see.', NOW(), NOW() FROM DUAL
@@ -376,3 +396,7 @@ WHERE NOT EXISTS (SELECT 1 FROM (SELECT `migration` FROM `migrations`) AS `exist
 INSERT INTO `migrations` (`migration`, `batch`)
 SELECT '2026_11_06_100002_grant_quotation_module_access', COALESCE((SELECT MAX(`batch`) FROM (SELECT `batch` FROM `migrations`) AS `migration_batch`), 0) + 1 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM (SELECT `migration` FROM `migrations`) AS `existing_migrations` WHERE `existing_migrations`.`migration` = '2026_11_06_100002_grant_quotation_module_access');
+
+INSERT INTO `migrations` (`migration`, `batch`)
+SELECT '2026_11_19_100001_add_quotation_tax_columns', COALESCE((SELECT MAX(`batch`) FROM (SELECT `batch` FROM `migrations`) AS `migration_batch`), 0) + 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM (SELECT `migration` FROM `migrations`) AS `existing_migrations` WHERE `existing_migrations`.`migration` = '2026_11_19_100001_add_quotation_tax_columns');

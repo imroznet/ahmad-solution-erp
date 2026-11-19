@@ -250,6 +250,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/quotations', [QuotationController::class, 'store'])
         ->middleware('permission:quotations.create')
         ->name('quotations.store');
+    Route::post('/quotations/calculate', [QuotationController::class, 'calculate'])
+        ->name('quotations.calculate');
     Route::get('/quotations/approvals', [QuotationApprovalController::class, 'index'])
         ->middleware('permission:quotations.approve')
         ->name('quotations.approvals');

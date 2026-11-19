@@ -5,8 +5,6 @@ namespace App\Documents;
 use App\Models\CommercialInvoice;
 use App\Models\DeliveryChallan;
 use App\Quotations\QuotationPdfRenderer;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -19,6 +17,7 @@ final class DocumentPdfRenderer
     public function __construct(
         private readonly QuotationPdfRenderer $letterhead,
         private readonly CompanySnapshot $companies,
+        private readonly PdfFactory $pdf,
     ) {}
 
     public function downloadChallan(DeliveryChallan $challan): Response
@@ -50,7 +49,7 @@ final class DocumentPdfRenderer
             'company' => $draft
                 ? $this->letterhead->letterhead()
                 : $this->companies->forIssued($this->snapshot($challan)),
-            'logo' => $draft ? $this->letterhead->logoDataUri() : null,
+            'logo' => $draft ? $this->letterhead->logoDataUri() : $this->companies->logoDataUri($this->snapshot($challan)),
             'notice' => $this->notice('asl.delivery_challans.notice', 'This delivery challan is not a commercial invoice, a tax invoice, or a Mushak form. Generating this PDF does not record dispatch or receipt.'),
         ];
     }
@@ -68,7 +67,7 @@ final class DocumentPdfRenderer
             'company' => $draft
                 ? $this->letterhead->letterhead()
                 : $this->companies->forIssued($this->snapshot($invoice)),
-            'logo' => $draft ? $this->letterhead->logoDataUri() : null,
+            'logo' => $draft ? $this->letterhead->logoDataUri() : $this->companies->logoDataUri($this->snapshot($invoice)),
             'notice' => $invoice->stringAttribute('tax_notice') !== ''
                 ? $invoice->stringAttribute('tax_notice')
                 : $this->notice('asl.commercial_invoices.notice', 'This is a commercial invoice. Tax is excluded and is not calculated. This document is not a tax invoice or a Mushak form.'),
@@ -80,17 +79,7 @@ final class DocumentPdfRenderer
      */
     private function render(string $view, array $data): string
     {
-        $html = view($view, $data)->render();
-        $options = new Options;
-        $options->setIsRemoteEnabled(false);
-        $options->setIsPhpEnabled(false);
-        $options->setDefaultFont('DejaVu Sans');
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
-
-        return $dompdf->output();
+        return $this->pdf->render($view, $data);
     }
 
     private function response(string $binary, string $filename): Response

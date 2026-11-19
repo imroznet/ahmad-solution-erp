@@ -22,16 +22,19 @@ final class VatLineCalculator
         string $driver,
         int $precision,
         string $roundingMethod,
+        string $rateField = 'vat_rate',
     ): VatLineResult {
         $mode = VatRounding::mode($roundingMethod);
         $this->assertPrecision($precision);
 
         $adjustmentAmount = $this->money($adjustment, $precision, $mode, 'adjustment_amount');
-        $parsedRate = $this->rate($rate);
+        $parsedRate = $this->rate($rate, $rateField);
 
         if ($driver === 'reverse') {
             if ($parsedRate === null) {
-                throw new TaxRuleException('vat_rate', 'Enter a VAT percentage before reversing the final amount. A blank percentage is not zero.');
+                throw new TaxRuleException($rateField, $rateField === 'vat_rate'
+                    ? 'Enter a VAT percentage before reversing the final amount. A blank percentage is not zero.'
+                    : 'Enter a percentage before reversing the final amount. A blank percentage is not zero.');
             }
 
             if ($final === null || trim($final) === '') {
@@ -164,7 +167,7 @@ final class VatLineCalculator
         return $scaled;
     }
 
-    private function rate(?string $value): ?Decimal
+    private function rate(?string $value, string $field): ?Decimal
     {
         if ($value === null) {
             return null;
@@ -177,7 +180,9 @@ final class VatLineCalculator
         }
 
         if (preg_match('/^(?:100(?:\.0{1,4})?|\d{1,2}(?:\.\d{1,4})?)$/', $trimmed) !== 1) {
-            throw new TaxRuleException('vat_rate', 'Enter a VAT percentage from 0 to 100, with at most 4 decimal places. Leave it blank if you are not entering one. A blank percentage is not zero.');
+            throw new TaxRuleException($field, $field === 'vat_rate'
+                ? 'Enter a VAT percentage from 0 to 100, with at most 4 decimal places. Leave it blank if you are not entering one. A blank percentage is not zero.'
+                : 'Enter a percentage from 0 to 100, with at most 4 decimal places. Leave it blank if you are not entering one. A blank percentage is not zero.');
         }
 
         return Decimal::of($trimmed);

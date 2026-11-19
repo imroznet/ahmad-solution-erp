@@ -31,7 +31,11 @@ final class InvoiceWriter
             $challanIds = $this->lines->challanIdsForInvoice($quotationId, $input);
             $this->locks->challansInOrder($challanIds);
             $prepared = $this->lines->forInvoice($revision, $quotationId, $input, null);
-            $total = $this->lines->total($prepared, $quotationId, $revision->decimalAttribute('total'), null);
+            // The commercial invoice bills the quotation line prices. Those
+            // prices are the base in subtotal. A VAT-including quotation total
+            // adds typed tax and is not this ceiling. Excluding quotations
+            // store the same amount in subtotal and total.
+            $total = $this->lines->total($prepared, $quotationId, $revision->decimalAttribute('subtotal'), null);
             $invoice = CommercialInvoice::query()->create([
                 'number' => null,
                 'quotation_id' => $quotation->getKey(),
@@ -76,7 +80,7 @@ final class InvoiceWriter
             }
 
             $prepared = $this->lines->forInvoice($revision, $quotationId, $input, (int) $invoice->getKey());
-            $total = $this->lines->total($prepared, $quotationId, $revision->decimalAttribute('total'), (int) $invoice->getKey());
+            $total = $this->lines->total($prepared, $quotationId, $revision->decimalAttribute('subtotal'), (int) $invoice->getKey());
             $invoice->fill([
                 'invoice_date' => $this->text->date($input['invoice_date'] ?? null, 'invoice_date'),
                 'customer_notes' => $this->text->nullable($input, 'customer_notes', 5000),

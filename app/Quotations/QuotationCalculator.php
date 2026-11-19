@@ -18,8 +18,9 @@ use InvalidArgumentException;
  *
  * A line total is quantity × unit price, then rounded to 2 decimal places.
  * A tie rounds away from zero. That is the application money rule. It is not
- * an NBR rule. The quotation total is the sum of those already rounded line
- * totals. Tax is not included.
+ * an NBR rule. The line sum is the base. An excluding revision stores that
+ * sum as the total. An including revision adds the typed VAT, generic tax,
+ * and adjustment in QuotationTax.
  */
 final class QuotationCalculator
 {

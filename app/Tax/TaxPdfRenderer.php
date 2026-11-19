@@ -2,9 +2,9 @@
 
 namespace App\Tax;
 
+use App\Documents\PdfFactory;
 use App\Models\MushakInvoice;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Quotations\QuotationPdfRenderer;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -14,10 +14,19 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class TaxPdfRenderer
 {
+    public function __construct(
+        private readonly PdfFactory $pdf,
+        private readonly QuotationPdfRenderer $letterhead,
+    ) {}
+
     public function mushak(MushakInvoice $invoice): Response
     {
         $invoice->loadMissing(['lines', 'commercialInvoice']);
-        $binary = $this->render('tax.mushak.pdf', ['invoice' => $invoice, 'lines' => $invoice->lines]);
+        $binary = $this->render('tax.mushak.pdf', [
+            'invoice' => $invoice,
+            'lines' => $invoice->lines,
+            'draftCompany' => $invoice->stringAttribute('status') === 'draft' ? $this->letterhead->letterhead() : null,
+        ]);
 
         return $this->response($binary, $this->filename($invoice->displayNumber(), 'mushak', (int) $invoice->getKey()));
     }
@@ -38,17 +47,7 @@ final class TaxPdfRenderer
      */
     private function render(string $view, array $data): string
     {
-        $html = view($view, $data)->render();
-        $options = new Options;
-        $options->setIsRemoteEnabled(false);
-        $options->setIsPhpEnabled(false);
-        $options->setDefaultFont('DejaVu Sans');
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
-
-        return $dompdf->output();
+        return $this->pdf->render($view, $data);
     }
 
     private function response(string $binary, string $filename): Response

@@ -144,7 +144,26 @@ Not done, and not claimed:
 - An official VDS or AIT certificate
 - Journals, receivables, payables, receipts, or payments
 - Email, filing, or deployment
-- Bengali labels / font rendering in the Mushak 6.3 PDF, and a printed-layout check
+- Bengali words in PDFs. Dompdf does not shape Bengali. The taka sign alone is drawn from a one-glyph font. A different PDF renderer is not in use
+- A printed check of the Mushak 6.3 page against the current prescribed form after the owner approves the emblem taken from the confirmed form file
+
+## PDF letterhead and quotation tax
+
+Done in this branch:
+
+- An issued challan or invoice stores a private copy of the company logo and prints that copy. A later logo change does not change the issued PDF. A snapshot from before this copy has no logo
+- Quotation, challan, and invoice PDFs share a compact letterhead and a 10mm page margin. The Mushak PDF keeps the official-form header
+- A quotation revision can be VAT excluding or VAT including. Excluding keeps the line sum as the total and stores no tax. Including calculates VAT and a generic Tax % from what the user types, plus an optional adjustment that needs a reason when it is not zero. The page does not calculate the money. Rates are not prefilled. Blank is not zero
+- The commercial invoice still excludes tax. Its ceiling is the quotation subtotal, the line base
+- Mushak 6.3 PDF layout follows the owner-confirmed form in English: emblem, MUSAK-6.3 box, centred seller, buyer and issue details, the ten columns, the total row, and the authorised-person lines. Calculated values are unchanged. The page says it is not an NBR certification
+
+Not done, and not claimed:
+
+- Bengali labels on the Mushak. The English disclosure stays
+- Owner approval of the government emblem image before merge
+- Confirmation of the generic "Tax %" label. It is not treated as a named tax
+- Quotation tax at 3 or 4 decimal places. Quotation money columns stay at 2 decimal places, half up
+- Staging deploy. This branch does not upload to cPanel
 
 ## Milestone 7 — accounting
 

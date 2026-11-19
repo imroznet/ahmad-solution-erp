@@ -79,7 +79,23 @@
             </tbody>
             <tfoot>
                 <tr class="border-t border-line">
-                    <td colspan="5" class="py-2 pr-3 text-right font-medium">Total ({{ $revision->currency_code }})</td>
+                    <td colspan="5" class="py-2 pr-3 text-right font-medium">Base</td>
+                    <td class="py-2 text-right">{{ $revision->subtotalMoney()->format() }}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="py-1 pr-3 text-right text-muted">VAT{{ $revision->typedRate('vat_rate_percent') ? ' '.$revision->typedRate('vat_rate_percent').'%' : '' }}</td>
+                    <td class="py-1 text-right">{{ $revision->nullableDecimal('vat_amount') === null ? 'Not calculated' : \App\Support\Money::of($revision->nullableDecimal('vat_amount'), $revision->stringAttribute('currency_code') ?: 'BDT')->format() }}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="py-1 pr-3 text-right text-muted">Tax{{ $revision->typedRate('tax_rate_percent') ? ' '.$revision->typedRate('tax_rate_percent').'%' : '' }}</td>
+                    <td class="py-1 text-right">{{ $revision->nullableDecimal('tax_amount') === null ? 'Not calculated' : \App\Support\Money::of($revision->nullableDecimal('tax_amount'), $revision->stringAttribute('currency_code') ?: 'BDT')->format() }}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="py-1 pr-3 text-right text-muted">Adjustment</td>
+                    <td class="py-1 text-right">{{ $revision->stringAttribute('tax_treatment') === 'included' ? \App\Support\Money::of($revision->decimalAttribute('adjustment_amount'), $revision->stringAttribute('currency_code') ?: 'BDT')->format() : 'None' }}</td>
+                </tr>
+                <tr class="border-t border-line">
+                    <td colspan="5" class="py-2 pr-3 text-right font-medium">Total ({{ $revision->taxTreatmentLabel() }})</td>
                     <td class="py-2 text-right font-semibold">{{ $money->format() }}</td>
                 </tr>
             </tfoot>
@@ -87,6 +103,9 @@
     </div>
 
     <p class="mt-4 text-sm">{{ $revision->tax_notice }}</p>
+    @if ($revision->adjustment_reason)
+        <p class="mt-1 text-sm">Adjustment reason: {{ $revision->adjustment_reason }}</p>
+    @endif
     @if ($revision->terms)
         <h3 class="mt-4 text-sm font-medium">Terms</h3>
         <p class="mt-1 whitespace-pre-wrap text-sm">{{ $revision->terms }}</p>

@@ -21,6 +21,7 @@ use App\Quotations\QuotationStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use LogicException;
 use Tests\TestCase;
 
@@ -421,6 +422,81 @@ class DeliveryDocumentTest extends TestCase
     /**
      * @return array{0: User, 1: User, 2: Party}
      */
+    public function test_an_issued_document_keeps_the_logo_from_issue_and_a_draft_uses_the_live_file(): void
+    {
+        Storage::fake('local');
+        [$sales, $manager, $customer] = $this->team();
+        $first = $this->png(20, 80, 40);
+        $second = $this->png(200, 40, 40);
+        $third = $this->png(20, 20, 180);
+        Storage::disk('local')->put('company-logo/first.png', $first);
+        CompanyProfile::query()->create([
+            'legal_name' => 'Logo Letterhead Ltd.',
+            'phone' => '01710000000',
+            'email' => 'office@logo.example',
+            'financial_year_starts_on' => '2025-07-01',
+            'financial_year_ends_on' => '2026-06-30',
+            'currency_code' => 'BDT',
+            'logo_path' => 'company-logo/first.png',
+        ]);
+        $quotation = $this->acceptedQuotation($sales, $manager, $customer);
+        $challan = $this->issueChallan($sales, $quotation, '1');
+        $snapshot = $challan->company_snapshot;
+        $this->assertIsArray($snapshot);
+        $this->assertIsArray($snapshot['logo']);
+        $this->assertNotSame('company-logo/first.png', $snapshot['logo']['path']);
+        $this->assertSame($first, Storage::disk('local')->get($snapshot['logo']['path']));
+
+        Storage::disk('local')->put('company-logo/first.png', $second);
+        $issued = view('challans.pdf', app(DocumentPdfRenderer::class)->challanData($challan->fresh() ?? $challan))->render();
+        $this->assertStringContainsString(base64_encode($first), $issued);
+        $this->assertStringNotContainsString(base64_encode($second), $issued);
+        $this->assertStringContainsString('Logo Letterhead Ltd.', $issued);
+        $this->assertStringContainsString('margin: 10mm', $issued);
+        $this->assertStringContainsString('letterhead-meta', $issued);
+
+        $this->actingAs($sales)->post('/challans', $this->challanPayload($quotation, '1'))->assertRedirect();
+        $draft = DeliveryChallan::query()->orderByDesc('id')->firstOrFail();
+        $draftHtml = view('challans.pdf', app(DocumentPdfRenderer::class)->challanData($draft))->render();
+        $this->assertStringContainsString(base64_encode($second), $draftHtml);
+        $this->assertStringNotContainsString(base64_encode($first), $draftHtml);
+
+        $this->actingAs($sales)->post('/invoices', $this->invoiceFromChallan($quotation, $challan, '1'))->assertRedirect();
+        $invoice = CommercialInvoice::query()->firstOrFail();
+        $this->actingAs($sales)->post(route('invoices.issue', $invoice))->assertRedirect();
+        $invoice->refresh();
+        $invoiceSnapshot = $invoice->company_snapshot;
+        $this->assertIsArray($invoiceSnapshot);
+        $this->assertSame($second, Storage::disk('local')->get($invoiceSnapshot['logo']['path']));
+        Storage::disk('local')->put('company-logo/first.png', $third);
+        $invoiceHtml = view('invoices.pdf', app(DocumentPdfRenderer::class)->invoiceData($invoice))->render();
+        $this->assertStringContainsString(base64_encode($second), $invoiceHtml);
+        $this->assertStringNotContainsString(base64_encode($third), $invoiceHtml);
+
+        $withoutLogo = $challan->fresh() ?? $challan;
+        $stored = $withoutLogo->company_snapshot;
+        $this->assertIsArray($stored);
+        unset($stored['logo']);
+        $withoutLogo->company_snapshot = $stored;
+        $legacy = view('challans.pdf', app(DocumentPdfRenderer::class)->challanData($withoutLogo))->render();
+        $this->assertStringNotContainsString('data:image', $legacy);
+    }
+
+    private function png(int $red, int $green, int $blue): string
+    {
+        $image = imagecreatetruecolor(2, 2);
+        $this->assertNotFalse($image);
+        $color = imagecolorallocate($image, $red, $green, $blue);
+        $this->assertNotFalse($color);
+        imagefill($image, 0, 0, $color);
+        ob_start();
+        imagepng($image);
+        $bytes = ob_get_clean();
+        $this->assertIsString($bytes);
+
+        return $bytes;
+    }
+
     private function team(): array
     {
         return [

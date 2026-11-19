@@ -2,26 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <title>{{ $invoice->number ?: 'Mushak 6.3 draft' }}</title>
+    @include('pdf.base')
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111; }
-        h1 { font-size: 16px; margin: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #222; padding: 4px; vertical-align: top; }
-        .note { margin-top: 12px; border: 1px solid #222; padding: 8px; }
-        .muted { color: #333; }
+        body { font-size: 8px; }
+        .center { text-align: center; }
+        .gov { font-size: 9px; font-weight: 700; margin: 0; }
+        .title { font-size: 11px; font-weight: 700; margin: 4px 0 0; }
+        .cite { margin: 1px 0 4px; }
+        .form-no { display: inline-block; border: 1.5px solid #111; padding: 4px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; }
+        table.form { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        table.form th, table.form td { border: 1px solid #111; padding: 2px; vertical-align: top; font-size: 7px; }
+        table.form th { font-weight: 700; text-align: center; }
+        table.parties td { border: 0; padding: 1px 8px 1px 0; vertical-align: top; font-size: 8px; }
+        .seller { margin: 4px 0; }
+        .sign { margin-top: 8px; }
+        .footnote { margin-top: 6px; }
+        .note { margin-top: 8px; border: 1px solid #222; padding: 6px; }
+        .disclosure { margin: 2px 0 4px; color: #333; }
     </style>
 </head>
 <body>
-    <p class="muted">Government of the People's Republic of Bangladesh · National Board of Revenue</p>
-    <h1>Mushak 6.3 · Tax invoice (kor challanpatra)</h1>
-    <p>Rule 40, sub-rule (1), clauses (ga) and (cha), as printed on the owner-confirmed form. This PDF uses English labels because the PDF font does not draw Bengali. It is not an NBR certification.</p>
-    <p><strong>{{ $invoice->number ?: 'Draft' }}</strong> · Date {{ $invoice->document_date?->format('d M Y') }} · Time {{ $invoice->issued_at?->timezone('Asia/Dhaka')->format('H:i') ?? 'Not issued' }}</p>
-    <p><strong>Registered person:</strong> {{ $invoice->seller_legal_name ?: 'Captured from the company profile at issue' }}<br>
-        BIN: {{ $invoice->seller_bin ?: 'Missing' }}<br>
-        Address of issue: {!! nl2br(e($invoice->seller_address ?: '')) !!}</p>
-    <p><strong>Buyer:</strong> {{ $invoice->buyer_name }}<br>
-        BIN: {{ $invoice->buyer_bin ?: 'Not entered' }}<br>
-        Destination of supply: {{ $invoice->destination }}</p>
+    <table class="head">
+        <tr>
+            <td style="width: 18%;"></td>
+            <td class="center">
+                <img src="{{ \App\Documents\PdfFactory::fileUrl(resource_path('images/bangladesh-government-emblem.png')) }}" alt="" style="width: 42px; height: auto;">
+                <p class="gov">Government of the People's Republic of Bangladesh</p>
+                <p class="gov">National Board of Revenue</p>
+            </td>
+            <td style="width: 22%; text-align: right; vertical-align: top;">
+                <span class="form-no">MUSAK-6.3</span>
+            </td>
+        </tr>
+    </table>
+    <p class="center title">Tax Invoice (Kor Challanpatra)</p>
+    <p class="center cite">[Rule 40, sub-rule (1), clauses (ga) and (cha)]</p>
+    <p class="center disclosure">This PDF uses English labels because the PDF font does not draw Bengali. It is not an NBR certification. The emblem is the mark printed on the owner-confirmed form file.</p>
+
+    <div class="seller center">
+        @if ($invoice->stringAttribute('status') === 'draft' && is_array($draftCompany ?? null))
+            <p><strong>{{ $draftCompany['legal_name'] }}</strong></p>
+            <p>BIN: {{ $draftCompany['bin'] ?: 'Missing' }}</p>
+            <p>Address of issue: {{ implode(', ', $draftCompany['address']) }}</p>
+        @else
+            <p><strong>{{ $invoice->seller_legal_name ?: 'Captured from the company profile at issue' }}</strong></p>
+            <p>BIN: {{ $invoice->seller_bin ?: 'Missing' }}</p>
+            <p>Address of issue: {!! nl2br(e($invoice->seller_address ?: '')) !!}</p>
+        @endif
+    </div>
+
+    <table class="parties">
+        <tr>
+            <td style="width: 58%;">
+                <p><strong>Buyer name:</strong> {{ $invoice->buyer_name }}</p>
+                <p><strong>Buyer BIN:</strong> {{ $invoice->buyer_bin ?: 'Not entered' }}</p>
+                <p><strong>Destination of supply:</strong> {{ $invoice->destination }}</p>
+            </td>
+            <td>
+                <p><strong>Challan number:</strong> {{ $invoice->number ?: 'Draft' }}</p>
+                <p><strong>Date of issue:</strong> {{ $invoice->document_date?->format('d M Y') }}</p>
+                <p><strong>Time of issue:</strong> {{ $invoice->issued_at?->timezone('Asia/Dhaka')->format('H:i') ?? 'Not issued' }}</p>
+            </td>
+        </tr>
+    </table>
+
     @php
         // The official form's total row. Column 10 is base + VAT + SD, as the
         // field map records; the rounding adjustment is not a column, so it
@@ -39,19 +84,19 @@
             $totalInclusive = \App\Tax\VatPresentation::poisha((string) $totalInclusive);
         }
     @endphp
-    <table>
+    <table class="form">
         <thead>
             <tr>
                 <th>Sl</th>
                 <th>Goods or service</th>
                 <th>Unit</th>
                 <th>Qty</th>
-                <th>Unit value excl. taxes (BDT)</th>
-                <th>Total value excl. taxes (BDT)</th>
-                <th>SD (BDT)</th>
-                <th>VAT rate typed by user</th>
-                <th>VAT amount (BDT)</th>
-                <th>Value incl. duties and taxes (BDT)</th>
+                <th>Unit value excl. taxes</th>
+                <th>Total value excl. taxes</th>
+                <th>SD</th>
+                <th>VAT rate</th>
+                <th>VAT amount</th>
+                <th>Value incl. duties and taxes</th>
             </tr>
         </thead>
         <tbody>
@@ -94,8 +139,15 @@
             </tr>
         </tfoot>
     </table>
-    <p>Responsible person: {{ $invoice->responsible_name }} {{ $invoice->responsible_designation }}</p>
-    <p>Signature: ____________________ &nbsp; Seal: ____________________</p>
+    <p class="footnote">Amounts in the table are BDT.</p>
+
+    <div class="sign">
+        <p><strong>Authorised person</strong></p>
+        <p>Name: {{ $invoice->responsible_name }}</p>
+        <p>Designation: {{ $invoice->responsible_designation }}</p>
+        <p>Signature: ____________________ &nbsp;&nbsp; Seal: ____________________</p>
+    </div>
+    <p class="footnote">* Source tax on this supply is not calculated on this form. VDS and AIT are separate records and are not included in the VAT amount or in the value including duties and taxes.</p>
     <div class="note">
         <strong>Supplementary calculation — not a Mushak 6.3 field.</strong>
         <p>Formula used by this system: final = base + VAT + adjustment. The percentage was typed by {{ $invoice->status === 'issued' ? 'a user and stored with the document' : 'the user on this draft' }}. The system did not decide whether it applies.</p>

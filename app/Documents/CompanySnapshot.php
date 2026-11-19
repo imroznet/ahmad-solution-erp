@@ -7,14 +7,14 @@ use App\Quotations\QuotationPdfRenderer;
 /**
  * Freezes the company identity printed on an issued challan or invoice.
  * A later company-profile edit does not change a stored snapshot.
- * The logo is omitted so the PDF can be reproduced without the image file.
+ * The logo is a private copy taken at issue. The live file is not read again.
  */
 final class CompanySnapshot
 {
     public function __construct(private readonly QuotationPdfRenderer $letterhead) {}
 
     /**
-     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address_lines: list<string>}
+     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address_lines: list<string>, logo: ?array{path: string, mime: string}}
      */
     public function capture(): array
     {
@@ -29,7 +29,25 @@ final class CompanySnapshot
             'phone' => $live['phone'],
             'website' => $live['website'],
             'address_lines' => $live['address'],
+            'logo' => $this->letterhead->snapshotLogo(),
         ];
+    }
+
+    /**
+     * The logo stored at issue. A snapshot with no logo does not fall back
+     * to the file on the company profile.
+     *
+     * @param  array<string, mixed>|null  $snapshot
+     */
+    public function logoDataUri(?array $snapshot): ?string
+    {
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $logo = $snapshot['logo'] ?? null;
+
+        return is_array($logo) ? $this->letterhead->logoDataUriFromSnapshot($logo) : null;
     }
 
     /**

@@ -35,7 +35,7 @@
             </td>
         </tr>
     </table>
-    <p class="center title">কর চালানপত্র</p>
+    <p class="center title" style="white-space: nowrap;">Tax Invoice &nbsp;|&nbsp; কর চালানপত্র</p>
     <p class="center cite">[Rule 40, sub-rule (1), clauses (ga) and (cha)]</p>
     <p class="center cite">[ বিধি ৪০ এর উপ-বিধি (১) এর দফা (গ) ও দফা (চ) দ্রষ্টব্য ]</p>
 

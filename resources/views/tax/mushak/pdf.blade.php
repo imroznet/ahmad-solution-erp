@@ -19,7 +19,6 @@
         .sign { margin-top: 8px; }
         .footnote { margin-top: 6px; }
         .note { margin-top: 8px; border: 1px solid #222; padding: 6px; }
-        .disclosure { margin: 2px 0 4px; color: #333; }
     </style>
 </head>
 <body>
@@ -36,19 +35,23 @@
             </td>
         </tr>
     </table>
-    <p class="center title">Tax Invoice (Kor Challanpatra)</p>
+    <p class="center title">কর চালানপত্র</p>
     <p class="center cite">[Rule 40, sub-rule (1), clauses (ga) and (cha)]</p>
-    <p class="center disclosure">This PDF uses English labels because the PDF font does not draw Bengali. It is not an NBR certification. The emblem is the mark printed on the owner-confirmed form file.</p>
+    <p class="center cite">[ বিধি ৪০ এর উপ-বিধি (১) এর দফা (গ) ও দফা (চ) দ্রষ্টব্য ]</p>
 
     <div class="seller center">
         @if ($invoice->stringAttribute('status') === 'draft' && is_array($draftCompany ?? null))
             <p><strong>{{ $draftCompany['legal_name'] }}</strong></p>
             <p>BIN: {{ $draftCompany['bin'] ?: 'Missing' }}</p>
-            <p>Address of issue: {{ implode(', ', $draftCompany['address']) }}</p>
+            <p>Address of issue:</p>
+            @foreach ($draftCompany['address'] as $line)
+                <p class="letterhead-meta">{{ $line }}</p>
+            @endforeach
         @else
             <p><strong>{{ $invoice->seller_legal_name ?: 'Captured from the company profile at issue' }}</strong></p>
             <p>BIN: {{ $invoice->seller_bin ?: 'Missing' }}</p>
-            <p>Address of issue: {!! nl2br(e($invoice->seller_address ?: '')) !!}</p>
+            <p>Address of issue:</p>
+            <p class="letterhead-meta">{!! nl2br(e($invoice->seller_address ?: '')) !!}</p>
         @endif
     </div>
 

@@ -14,7 +14,7 @@
     }
     body { font-family: DejaVu Sans, sans-serif; color: #17211c; font-size: 10px; margin: 0; }
     .taka { font-family: "Taka Sign", DejaVu Sans, sans-serif; font-weight: 400; }
-    .letterhead-name { font-size: 9px; font-weight: 700; margin: 0; line-height: 1.2; }
+    .letterhead-name { font-size: 14px; font-weight: 700; margin: 0; line-height: 1.2; }
     .letterhead-meta { font-size: 8px; margin: 0; line-height: 1.25; color: #243028; }
     p { margin: 0 0 2px; }
     h2 { font-size: 12px; margin: 0 0 2px; }

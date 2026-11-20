@@ -133,6 +133,7 @@ final class CompanyAddressWriter
      *     postcode: ?string,
      *     country: string,
      *     is_active: bool,
+     *     show_on_pdf: bool,
      *     effective_from: ?string,
      *     effective_until: ?string,
      *     is_default_correspondence: bool,
@@ -144,9 +145,10 @@ final class CompanyAddressWriter
     private function payload(array $attributes, User $actor): array
     {
         $active = (bool) ($attributes['is_active'] ?? false);
+        $type = (string) $attributes['address_type'];
 
         return [
-            'address_type' => (string) $attributes['address_type'],
+            'address_type' => $type,
             'line_1' => (string) $attributes['line_1'],
             'line_2' => $this->nullableString($attributes['line_2'] ?? null),
             'area' => $this->nullableString($attributes['area'] ?? null),
@@ -156,6 +158,9 @@ final class CompanyAddressWriter
             'postcode' => $this->nullableString($attributes['postcode'] ?? null),
             'country' => (string) $attributes['country'],
             'is_active' => $active,
+            'show_on_pdf' => array_key_exists('show_on_pdf', $attributes)
+                ? (bool) $attributes['show_on_pdf']
+                : in_array($type, AddressType::exclusiveActive(), true),
             'effective_from' => $this->nullableString($attributes['effective_from'] ?? null),
             'effective_until' => $this->nullableString($attributes['effective_until'] ?? null),
             'is_default_correspondence' => $active && (bool) ($attributes['is_default_correspondence'] ?? false),

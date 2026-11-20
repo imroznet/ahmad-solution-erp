@@ -29,7 +29,7 @@
     <div x-data="{ sidebar: false }" class="app-shell min-h-screen">
         <div x-show="sidebar" x-cloak class="fixed inset-0 z-30 bg-ink/40 lg:hidden" @click="sidebar = false"></div>
         <aside
-            class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-brand text-white transition-transform lg:static lg:w-auto lg:translate-x-0"
+            class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col overflow-hidden bg-brand text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:translate-x-0 lg:self-start"
             :class="sidebar ? 'translate-x-0' : '-translate-x-full'"
         >
             <div class="flex items-center gap-3 px-4 py-5">
@@ -39,7 +39,7 @@
                     <span class="block text-xs text-white/75">Business system</span>
                 </span>
             </div>
-            <nav class="flex-1 space-y-1 overflow-y-auto px-3 pb-4" aria-label="Primary">
+            <nav class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4" aria-label="Primary">
                 @if ($currentUser?->hasPermission('dashboard.view'))
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" icon="grid" label="Dashboard" />
                 @endif

@@ -84,6 +84,13 @@
         <fieldset class="space-y-2">
             <legend class="text-sm font-medium">Use</legend>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" value="1" @checked($active)> Active</label>
+            @php
+                $pdfType = (string) old('address_type', $address?->address_type ?? $supersedes?->address_type ?? 'registered_office');
+                $pdfDefault = $address?->show_on_pdf ?? $supersedes?->show_on_pdf ?? in_array($pdfType, \App\Company\AddressType::exclusiveActive(), true);
+                $showOnPdf = filter_var(old('show_on_pdf', $pdfDefault), FILTER_VALIDATE_BOOLEAN);
+            @endphp
+            <input type="hidden" name="show_on_pdf" value="0">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="show_on_pdf" value="1" @checked($showOnPdf)> Show on PDFs</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_default_correspondence" value="1" @checked($correspondence)> Default correspondence address</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_default_billing" value="1" @checked($billing)> Default billing address</label>
         </fieldset>

@@ -248,6 +248,11 @@ class QuotationRevision extends Model
         return $result;
     }
 
+    public function addressText(string $attribute): string
+    {
+        return implode(', ', $this->addressLines($attribute));
+    }
+
     public function isPastValidity(): bool
     {
         $validUntil = $this->getAttribute('valid_until');

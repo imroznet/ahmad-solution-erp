@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'postcode',
     'country',
     'is_active',
+    'show_on_pdf',
     'effective_from',
     'effective_until',
     'is_default_correspondence',
@@ -37,6 +38,7 @@ class CompanyAddress extends Model
     {
         return [
             'is_active' => 'boolean',
+            'show_on_pdf' => 'boolean',
             'is_default_correspondence' => 'boolean',
             'is_default_billing' => 'boolean',
             'effective_from' => 'date',

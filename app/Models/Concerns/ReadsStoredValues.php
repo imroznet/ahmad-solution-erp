@@ -53,4 +53,9 @@ trait ReadsStoredValues
 
         return $result;
     }
+
+    public function addressText(string $attribute): string
+    {
+        return implode(', ', $this->addressLines($attribute));
+    }
 }

@@ -101,6 +101,7 @@ final class QuotationSnapshotter
             'district' => $this->text($snapshot, 'district'),
             'division' => $this->text($snapshot, 'division'),
             'postcode' => $this->text($snapshot, 'postcode'),
+            'post_office' => $this->text($snapshot, 'post_office'),
             'country' => $this->text($snapshot, 'country'),
             'lines' => $address->lines(),
         ];

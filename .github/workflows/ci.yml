@@ -162,6 +162,14 @@ jobs:
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-units-module.sql
           unit_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM units" asl_erp)
           test "$unit_rows" = "14"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-pdf-addresses.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-pdf-addresses.sql
+          pdf_flag=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_erp' AND TABLE_NAME='company_addresses' AND COLUMN_NAME='show_on_pdf'" )
+          test "$pdf_flag" = "1"
+          post_office=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_erp' AND TABLE_NAME='party_addresses' AND COLUMN_NAME='post_office'" )
+          test "$post_office" = "1"
+          pdf_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100001_add_pdf_address_columns'" asl_erp)
+          test "$pdf_migration" = "1"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in
@@ -176,6 +184,10 @@ jobs:
           SQL
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-parties-module.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-parties-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-pdf-addresses.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-pdf-addresses.sql
+          upgrade_post_office=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_upgrade' AND TABLE_NAME='party_addresses' AND COLUMN_NAME='post_office'" )
+          test "$upgrade_post_office" = "1"
           upgraded=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug='parties.view'" asl_upgrade)
           test "$upgraded" = "1"
           upgraded_sales=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='customers.view'" asl_upgrade)

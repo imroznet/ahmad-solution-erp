@@ -14,7 +14,7 @@ final class CompanySnapshot
     public function __construct(private readonly QuotationPdfRenderer $letterhead) {}
 
     /**
-     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address_lines: list<string>, logo: ?array{path: string, mime: string}}
+     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address_lines: list<string>, address_layout: string, logo: ?array{path: string, mime: string}}
      */
     public function capture(): array
     {
@@ -29,6 +29,7 @@ final class CompanySnapshot
             'phone' => $live['phone'],
             'website' => $live['website'],
             'address_lines' => $live['address'],
+            'address_layout' => $live['address_layout'],
             'logo' => $this->letterhead->snapshotLogo(),
         ];
     }
@@ -52,7 +53,7 @@ final class CompanySnapshot
 
     /**
      * @param  array<string, mixed>|null  $snapshot
-     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address: list<string>}
+     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address: list<string>, address_layout: string}
      */
     public function forIssued(?array $snapshot): array
     {
@@ -74,6 +75,8 @@ final class CompanySnapshot
             }
         }
 
+        $layout = $snapshot['address_layout'] ?? null;
+
         return [
             'legal_name' => $legalName,
             'trading_name' => $this->text($snapshot, 'trading_name'),
@@ -83,6 +86,9 @@ final class CompanySnapshot
             'phone' => $this->text($snapshot, 'phone'),
             'website' => $this->text($snapshot, 'website'),
             'address' => $address,
+            'address_layout' => $layout === LetterheadAddresses::LAYOUT_LABELLED
+                ? LetterheadAddresses::LAYOUT_LABELLED
+                : LetterheadAddresses::LAYOUT_JOINED,
         ];
     }
 
@@ -97,7 +103,7 @@ final class CompanySnapshot
     }
 
     /**
-     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address: list<string>}
+     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address: list<string>, address_layout: string}
      */
     private function fallback(): array
     {
@@ -112,6 +118,7 @@ final class CompanySnapshot
             'phone' => null,
             'website' => null,
             'address' => [],
+            'address_layout' => LetterheadAddresses::LAYOUT_LABELLED,
         ];
     }
 }

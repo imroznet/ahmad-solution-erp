@@ -134,7 +134,7 @@ Done in this branch:
 - Mushak 6.3 as its own document on an issued commercial invoice. Seller BIN and address come from the company profile and are snapshotted at issue. The buyer can be the invoice customer, an existing party, or a one-off name that does not create a party. Issued rows cannot be edited. Void keeps the row. The PDF is private
 - A typed VAT percentage, including an explicit zero. A blank percentage does not calculate. VAT and the VAT-inclusive final amount calculate from that percentage. Editing the final amount reverse-calculates the base and keeps the percentage and the adjustment. `final = base + VAT + adjustment`. Precision 2, 3, or 4 and the selected rounding method are stored. A signed rounding adjustment is separate from VAT. BDT on the form is shown at two decimal places
 - VDS and AIT records in both directions, with typed basis and amount. They are not added to output VAT. No Mushak 6.6 or withholding certificate is generated, because those forms were not verified
-- Milestone 6 hardening (merged as PR #22): a commercial invoice cannot be voided while a linked Mushak 6.3 is issued — the Mushak must be voided first, with a reason; a draft Mushak does not block the void. A Mushak draft update reloads the row under `lockForUpdate()` inside the transaction and rechecks that it is still a draft, so a concurrent issue cannot be overwritten; the same recheck was added to Mushak void. The draft Mushak form now calculates live: base, rate, final, adjustment, precision, and rounding changes call `POST /tax/mushak/calculate`, which runs the same server-side `VatLineCalculator` that runs on save. The browser does no money arithmetic. Supplementary duty has no live handler and never changes the driver, base, or VAT. The rendered Mushak PDF was checked against the owner-confirmed PDF (SHA-256 matches the source register): seller, buyer, amounts, and the supplementary note are correct, and the table now has the official form's total row and prints the rate as `15%` instead of `15.0000%`. Bengali labels are still not rendered — the PDF says so in plain text — and that remains future work. A follow-up (branch `muse/mushak-preview-race-fix`) fixed the live preview race Codex found on PR #22: every edit now invalidates in-flight previews at once — a generation counter incremented on input plus an AbortController, with the generation check as the authority — so only the latest valid response can update the form, and a stale forward response can no longer overwrite a newer final-amount edit (or the reverse). The preview protocol lives in `resources/js/mushak-preview.js`, covered by regression tests run with `npm run test:js` (also run in CI).
+- Milestone 6 hardening (merged as PR #22): a commercial invoice cannot be voided while a linked Mushak 6.3 is issued — the Mushak must be voided first, with a reason; a draft Mushak does not block the void. A Mushak draft update reloads the row under `lockForUpdate()` inside the transaction and rechecks that it is still a draft, so a concurrent issue cannot be overwritten; the same recheck was added to Mushak void. The draft Mushak form now calculates live: base, rate, final, adjustment, precision, and rounding changes call `POST /tax/mushak/calculate`, which runs the same server-side `VatLineCalculator` that runs on save. The browser does no money arithmetic. Supplementary duty has no live handler and never changes the driver, base, or VAT. The rendered Mushak PDF was checked against the owner-confirmed PDF (SHA-256 matches the source register): seller, buyer, amounts, and the supplementary note are correct, and the table now has the official form's total row and prints the rate as `15%` instead of `15.0000%`. Bengali labels are still not rendered — the PDF says so in plain text — The later PDF section replaces that disclosure with the Bangla title and rule line on the tax PDFs. A follow-up (branch `muse/mushak-preview-race-fix`) fixed the live preview race Codex found on PR #22: every edit now invalidates in-flight previews at once — a generation counter incremented on input plus an AbortController, with the generation check as the authority — so only the latest valid response can update the form, and a stale forward response can no longer overwrite a newer final-amount edit (or the reverse). The preview protocol lives in `resources/js/mushak-preview.js`, covered by regression tests run with `npm run test:js` (also run in CI).
 
 Not done, and not claimed:
 
@@ -144,7 +144,7 @@ Not done, and not claimed:
 - An official VDS or AIT certificate
 - Journals, receivables, payables, receipts, or payments
 - Email, filing, or deployment
-- Bengali words in PDFs. Dompdf does not shape Bengali. The taka sign alone is drawn from a one-glyph font. A different PDF renderer is not in use
+- Bengali on quotation, challan, and commercial invoice PDFs. Those three stay on Dompdf. The tax PDFs are in the later section
 - A printed check of the Mushak 6.3 page against the current prescribed form after the owner approves the emblem taken from the confirmed form file
 
 ## PDF letterhead and quotation tax
@@ -155,11 +155,10 @@ Done in this branch:
 - Quotation, challan, and invoice PDFs share a compact letterhead and a 10mm page margin. The Mushak PDF keeps the official-form header
 - A quotation revision can be VAT excluding or VAT including. Excluding keeps the line sum as the total and stores no tax. Including calculates VAT and a generic Tax % from what the user types, plus an optional adjustment that needs a reason when it is not zero. The page does not calculate the money. Rates are not prefilled. Blank is not zero
 - The commercial invoice still excludes tax. Its ceiling is the quotation subtotal, the line base
-- Mushak 6.3 PDF layout follows the owner-confirmed form in English: emblem, MUSAK-6.3 box, centred seller, buyer and issue details, the ten columns, the total row, and the authorised-person lines. Calculated values are unchanged. The page says it is not an NBR certification
+- Mushak 6.3 PDF layout follows the owner-confirmed form: emblem, MUSAK-6.3 box, centred seller, buyer and issue details, the ten columns, the total row, and the authorised-person lines. Calculated values are unchanged. The English font disclosure on that page was removed in the later PDF section. The layout is not an NBR certification
 
 Not done, and not claimed:
 
-- Bengali labels on the Mushak. The English disclosure stays
 - Owner approval of the government emblem image before merge
 - Confirmation of the generic "Tax %" label. It is not treated as a named tax
 - Quotation tax at 3 or 4 decimal places. Quotation money columns stay at 2 decimal places, half up
@@ -177,6 +176,24 @@ Not done, and not claimed:
 
 - A staging upload. This branch does not upload to cPanel
 - A product catalogue. Lines are still typed by hand
+
+## PDF header, addresses, and Bengali on the tax invoice
+
+Done in this branch:
+
+- The shared letterhead name is 14px and bold. The meta lines stay 8px, the body stays 10px, and the page margin stays 10mm
+- Each company address has Show on PDFs. A new PDF prints every active address with that flag, one labelled line each. Active registered and corporate addresses start with the flag on. Turning every flag off leaves the address off the letterhead. An issued challan, invoice, or Mushak keeps the address stored at issue
+- A customer address on a quotation, challan, or commercial invoice PDF is one flowing line. A post office and postcode print as `Name-Code` when both were stored. An older snapshot without a post office does not gain one
+- Mushak 6.3 and the VDS/AIT PDFs are rendered by mPDF 8.3.1. Quotation, challan, and commercial invoice PDFs stay on Dompdf. The Mushak title is `কর চালানপত্র`, and the Bangla rule line sits with the English rule line. The English font disclosure is gone. This is not an NBR certification
+- Noto Sans Bengali was not registered. mPDF 8.3.1 throws while reading that font's OpenType coverage. Bengali runs use FreeSerif, the face mPDF already selects for Bengali, with its OpenType layout enabled. Latin text stays DejaVu Sans
+- At desktop width the sidebar is a viewport-height column with its own scrollbar. The phone drawer is unchanged
+
+Not done, and not claimed:
+
+- Bengali words on quotation, challan, or commercial invoice PDFs
+- Noto Sans Bengali as the PDF face. A later renderer that can read its tables would be a new test
+- An NBR certification, or a VAT rate chosen by the system
+- A staging upload. `gd` and `mbstring` on stage.ahmad.bd still have to be confirmed before this mPDF code is deployed. This branch does not upload to cPanel
 
 ## Milestone 7 — accounting
 

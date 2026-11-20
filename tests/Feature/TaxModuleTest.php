@@ -564,6 +564,7 @@ class TaxModuleTest extends TestCase
             'district' => 'Dhaka',
             'country' => 'Bangladesh',
             'is_active' => true,
+            'show_on_pdf' => true,
         ]);
     }
 

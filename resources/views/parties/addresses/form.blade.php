@@ -63,6 +63,10 @@
                 <input id="division" name="division" value="{{ old('division', $address?->division) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
             </div>
             <div>
+                <label for="post_office" class="block text-sm font-medium">Post office</label>
+                <input id="post_office" name="post_office" value="{{ old('post_office', $address?->post_office) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
+            </div>
+            <div>
                 <label for="postcode" class="block text-sm font-medium">Postcode</label>
                 <input id="postcode" name="postcode" value="{{ old('postcode', $address?->postcode) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
             </div>

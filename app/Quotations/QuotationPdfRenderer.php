@@ -2,8 +2,8 @@
 
 namespace App\Quotations;
 
+use App\Documents\LetterheadAddresses;
 use App\Documents\PdfFactory;
-use App\Models\CompanyAddress;
 use App\Models\CompanyProfile;
 use App\Models\Quotation;
 use App\Models\QuotationRevision;
@@ -16,7 +16,10 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class QuotationPdfRenderer
 {
-    public function __construct(private readonly PdfFactory $pdf) {}
+    public function __construct(
+        private readonly PdfFactory $pdf,
+        private readonly LetterheadAddresses $addresses,
+    ) {}
 
     public function download(Quotation $quotation, QuotationRevision $revision): Response
     {
@@ -44,7 +47,7 @@ final class QuotationPdfRenderer
     }
 
     /**
-     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address: list<string>}
+     * @return array{legal_name: string, trading_name: ?string, tin: ?string, bin: ?string, email: ?string, phone: ?string, website: ?string, address: list<string>, address_layout: string}
      */
     public function letterhead(): array
     {
@@ -56,9 +59,6 @@ final class QuotationPdfRenderer
             $legalName = is_string($fallback) ? $fallback : 'Ahmad Solution Ltd.';
         }
 
-        $profile?->loadMissing('addresses');
-        $address = $profile?->registeredOffice() ?? $profile?->corporateOffice();
-
         return [
             'legal_name' => $legalName,
             'trading_name' => $this->text($profile, 'trading_name'),
@@ -67,7 +67,8 @@ final class QuotationPdfRenderer
             'email' => $this->text($profile, 'email'),
             'phone' => $this->text($profile, 'phone'),
             'website' => $this->text($profile, 'website'),
-            'address' => $address instanceof CompanyAddress ? $address->lines() : [],
+            'address' => $this->addresses->lines($profile),
+            'address_layout' => LetterheadAddresses::LAYOUT_LABELLED,
         ];
     }
 

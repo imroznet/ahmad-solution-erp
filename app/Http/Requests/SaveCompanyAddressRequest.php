@@ -33,14 +33,20 @@ class SaveCompanyAddressRequest extends FormRequest
             'supersedes_address_id',
         ]);
 
-        $this->merge([
+        $merged = [
             'line_1' => trim((string) $this->input('line_1')),
             'district' => trim((string) $this->input('district')),
             'country' => trim((string) $this->input('country', 'Bangladesh')),
             'is_active' => $this->boolean('is_active'),
             'is_default_correspondence' => $this->boolean('is_default_correspondence'),
             'is_default_billing' => $this->boolean('is_default_billing'),
-        ]);
+        ];
+
+        if ($this->exists('show_on_pdf')) {
+            $merged['show_on_pdf'] = $this->boolean('show_on_pdf');
+        }
+
+        $this->merge($merged);
     }
 
     /**
@@ -59,6 +65,7 @@ class SaveCompanyAddressRequest extends FormRequest
             'postcode' => ['nullable', 'string', 'max:20'],
             'country' => ['required', 'string', 'max:80'],
             'is_active' => ['boolean'],
+            'show_on_pdf' => ['sometimes', 'boolean'],
             'effective_from' => ['nullable', 'date'],
             'effective_until' => ['nullable', 'date', 'after_or_equal:effective_from'],
             'is_default_correspondence' => ['boolean'],

@@ -28,7 +28,7 @@
     <h2>{{ $challan->party_legal_name }}</h2>
     @if ($challan->party_trading_name)<p>{{ $challan->party_trading_name }}</p>@endif
     @if ($challan->contact_name)<p>{{ $challan->contact_name }}</p>@endif
-    @foreach ($challan->addressLines('shipping_address') as $line)<p>{{ $line }}</p>@endforeach
+    @if ($challan->addressText('shipping_address') !== '')<p>{{ $challan->addressText('shipping_address') }}</p>@endif
     @if ($challan->delivery_location)<p>Location: {{ $challan->delivery_location }}</p>@endif
     @if ($challan->recipient_name)<p>Recipient: {{ $challan->recipient_name }}</p>@endif
     @if ($challan->vehicle_or_carrier)<p>Carrier: {{ $challan->vehicle_or_carrier }}</p>@endif

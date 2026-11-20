@@ -33,6 +33,7 @@ class CompanyAddressController extends Controller
         'postcode',
         'country',
         'is_active',
+        'show_on_pdf',
         'effective_from',
         'effective_until',
         'is_default_correspondence',

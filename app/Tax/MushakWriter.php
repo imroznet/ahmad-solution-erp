@@ -171,7 +171,7 @@ final class MushakWriter
             }
 
             if ($seller['address_lines'] === []) {
-                throw new TaxRuleException('seller_address', 'The company profile has no registered or corporate address. Add that address before issuing Mushak 6.3.');
+                throw new TaxRuleException('seller_address', 'The company profile has no address marked to show on PDFs. Mark the address of issue before issuing Mushak 6.3.');
             }
 
             if ($locked->getAttribute('total_final') === null || ! $locked->amountsReconcile()) {

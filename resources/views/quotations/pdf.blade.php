@@ -38,19 +38,19 @@
         <tr>
             <td style="width: 50%;">
                 <h2>Billing address</h2>
-                @forelse ($revision->addressLines('billing_address') as $line)
-                    <p>{{ $line }}</p>
-                @empty
+                @if ($revision->addressText('billing_address') !== '')
+                    <p>{{ $revision->addressText('billing_address') }}</p>
+                @else
                     <p class="muted">No billing address was recorded.</p>
-                @endforelse
+                @endif
             </td>
             <td>
                 <h2>Delivery address</h2>
-                @forelse ($revision->addressLines('shipping_address') as $line)
-                    <p>{{ $line }}</p>
-                @empty
+                @if ($revision->addressText('shipping_address') !== '')
+                    <p>{{ $revision->addressText('shipping_address') }}</p>
+                @else
                     <p class="muted">No delivery address was recorded.</p>
-                @endforelse
+                @endif
             </td>
         </tr>
     </table>

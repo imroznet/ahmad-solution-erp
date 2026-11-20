@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'district',
     'division',
     'postcode',
+    'post_office',
     'country',
     'is_default_billing',
     'is_default_shipping',
@@ -93,7 +94,7 @@ class PartyAddress extends Model
             $this->text('upazila'),
             $this->text('district'),
             $this->text('division'),
-            $this->text('postcode'),
+            ...$this->postOfficeParts(),
             $this->text('country'),
         ], fn (?string $line): bool => $line !== null));
     }
@@ -112,6 +113,7 @@ class PartyAddress extends Model
             'district' => $this->text('district'),
             'division' => $this->text('division'),
             'postcode' => $this->text('postcode'),
+            'post_office' => $this->text('post_office'),
             'country' => $this->text('country'),
             'is_default_billing' => (bool) $this->is_default_billing,
             'is_default_shipping' => (bool) $this->is_default_shipping,
@@ -120,6 +122,21 @@ class PartyAddress extends Model
             'effective_until' => $this->dateLabel('effective_until'),
             'supersedes_address_id' => $this->supersedes_address_id,
         ];
+    }
+
+    /**
+     * @return list<?string>
+     */
+    private function postOfficeParts(): array
+    {
+        $postOffice = $this->text('post_office');
+        $postcode = $this->text('postcode');
+
+        if ($postOffice !== null && $postcode !== null) {
+            return [$postOffice.'-'.$postcode];
+        }
+
+        return [$postOffice, $postcode];
     }
 
     private function text(string $key): ?string

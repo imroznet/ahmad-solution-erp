@@ -28,7 +28,7 @@
     <h2>{{ $invoice->party_legal_name }}</h2>
     @if ($invoice->party_trading_name)<p>{{ $invoice->party_trading_name }}</p>@endif
     @if ($invoice->contact_name)<p>{{ $invoice->contact_name }}</p>@endif
-    @foreach ($invoice->addressLines('billing_address') as $line)<p>{{ $line }}</p>@endforeach
+    @if ($invoice->addressText('billing_address') !== '')<p>{{ $invoice->addressText('billing_address') }}</p>@endif
 
     <table class="sheet">
         <thead>

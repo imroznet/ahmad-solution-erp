@@ -90,6 +90,7 @@ final class PermissionCatalog
             self::permission(71, 'View measurement units', 'units.view', 'Units', 'View the measurement unit list used on quotation, challan, invoice, and Mushak lines.'),
             self::permission(72, 'Manage measurement units', 'units.manage', 'Units', 'Create, edit, deactivate, and delete measurement units. Existing line text is not rewritten.'),
             self::permission(73, 'Approve own quotations', 'quotations.approve_own', 'Quotations', 'Approve a submitted quotation the user created or submitted themself. Without it, a user can only approve quotations prepared by someone else.'),
+            self::permission(74, 'Manage the public site', 'public_site.manage', 'Administration', 'Show or hide the public website while it is under maintenance. This does not hide the ERP.'),
         ];
     }
 
@@ -183,6 +184,7 @@ final class PermissionCatalog
                     'ait.void',
                     'units.view',
                     'units.manage',
+                    'public_site.manage',
                 ],
             ],
             [

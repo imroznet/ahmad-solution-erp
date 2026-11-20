@@ -24,7 +24,7 @@
         $taxVisible = $currentUser?->hasPermission('mushak.view') || $currentUser?->hasPermission('tax_rules.view') || $currentUser?->hasPermission('vds.view') || $currentUser?->hasPermission('ait.view');
         $partyVisible = $currentUser?->hasPermission('customers.view') || $currentUser?->hasPermission('suppliers.view') || $currentUser?->hasPermission('parties.view');
         $companyVisible = $currentUser?->hasPermission('company.view') || $currentUser?->hasPermission('company.documents.view') || $currentUser?->hasPermission('units.view');
-        $adminVisible = $currentUser?->hasPermission('quotations.approve') || $currentUser?->hasPermission('users.view') || $currentUser?->hasPermission('roles.view') || $currentUser?->hasPermission('audit.view') || $currentUser?->hasPermission('system.view');
+        $adminVisible = $currentUser?->hasPermission('quotations.approve') || $currentUser?->hasPermission('users.view') || $currentUser?->hasPermission('roles.view') || $currentUser?->hasPermission('audit.view') || $currentUser?->hasPermission('system.view') || $currentUser?->hasPermission('public_site.manage');
     @endphp
     <div x-data="{ sidebar: false }" class="app-shell min-h-screen">
         <div x-show="sidebar" x-cloak class="fixed inset-0 z-30 bg-ink/40 lg:hidden" @click="sidebar = false"></div>
@@ -115,6 +115,9 @@
                     @endif
                     @if ($currentUser?->hasPermission('system.view'))
                         <x-nav-link :href="route('system.status')" :active="request()->routeIs('system.*')" icon="activity" label="System status" />
+                    @endif
+                    @if ($currentUser?->hasPermission('public_site.manage'))
+                        <x-nav-link :href="route('public-site.edit')" :active="request()->routeIs('public-site.*')" icon="activity" label="Public site" />
                     @endif
                 @endif
             </nav>

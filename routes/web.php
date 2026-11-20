@@ -18,6 +18,7 @@ use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\PublicQuotationController;
+use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\QuotationApprovalController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\QuotationShareController;
@@ -94,6 +95,13 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/system', SystemStatusController::class)
         ->middleware('permission:system.view')
         ->name('system.status');
+
+    Route::get('/public-site', [PublicSiteController::class, 'edit'])
+        ->middleware('permission:public_site.manage')
+        ->name('public-site.edit');
+    Route::put('/public-site', [PublicSiteController::class, 'update'])
+        ->middleware('permission:public_site.manage')
+        ->name('public-site.update');
 
     Route::get('/units', [UnitController::class, 'index'])
         ->middleware('permission:units.view')

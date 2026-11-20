@@ -78,7 +78,8 @@ INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `descriptio
 (70, 'Void AIT records', 'ait.void', 'AIT', 'Void an AIT record. The record is kept.', NOW(), NOW()),
 (71, 'View measurement units', 'units.view', 'Units', 'View the measurement unit list used on quotation, challan, invoice, and Mushak lines.', NOW(), NOW()),
 (72, 'Manage measurement units', 'units.manage', 'Units', 'Create, edit, deactivate, and delete measurement units. Existing line text is not rewritten.', NOW(), NOW()),
-(73, 'Approve own quotations', 'quotations.approve_own', 'Quotations', 'Approve a submitted quotation the user created or submitted themself. Without it, a user can only approve quotations prepared by someone else.', NOW(), NOW());
+(73, 'Approve own quotations', 'quotations.approve_own', 'Quotations', 'Approve a submitted quotation the user created or submitted themself. Without it, a user can only approve quotations prepared by someone else.', NOW(), NOW()),
+(74, 'Manage the public site', 'public_site.manage', 'Administration', 'Show or hide the public website while it is under maintenance. This does not hide the ERP.', NOW(), NOW());
 
 INSERT INTO `roles` (`id`, `name`, `slug`, `description`, `is_system`, `created_at`, `updated_at`) VALUES
 (1, 'Super Administrator', 'super-administrator', 'Full access. This role cannot be stripped of permissions.', 1, NOW(), NOW()),
@@ -164,6 +165,7 @@ INSERT INTO `permission_role` (`role_id`, `permission_id`) VALUES
 (1, 71),
 (1, 72),
 (1, 73),
+(1, 74),
 (2, 1),
 (2, 2),
 (2, 3),
@@ -235,6 +237,7 @@ INSERT INTO `permission_role` (`role_id`, `permission_id`) VALUES
 (2, 70),
 (2, 71),
 (2, 72),
+(2, 74),
 (3, 1),
 (3, 10),
 (3, 13),

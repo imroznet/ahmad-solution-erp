@@ -96,6 +96,8 @@ If the quotation permissions are already imported, import `deploy/upgrade-quotat
 
 If the public-site switch is not in the database yet, import `deploy/upgrade-public-site.sql` once. It creates `public_site_controls` when that table is missing, inserts the visible default only when row 1 is missing, adds `public_site.manage`, and grants it to the administrator and super administrator. Importing it again does not turn a later maintenance flag back off and does not duplicate the permission. Set `PUBLIC_SITE_MAINTENANCE_FILE=/home/ahmadcom/ahmad-private/public-site-maintenance` in the ERP environment so the switch writes the file the public site reads. Leave it empty until that path is confirmed on the host. The ERP itself stays available either way.
 
+If the contact-form switches are not in the database yet, import `deploy/upgrade-public-site-contact.sql` once after that file. It adds `contact_form_enabled` (default on) and `recaptcha_enabled` (default off). Importing it again does not change a later choice. The same private directory then receives `public-site-contact-form` and `public-site-recaptcha`. Set `RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY` in the environment for the checkbox. Those values are not stored in the database. Saving the screen copies them to `public-site-recaptcha-keys` in that private directory when both are set. Mail delivery from the contact form is still a separate host setting.
+
 `artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role. The unit seeder fills the starter list only when the table is empty, so a later seed does not restore a symbol the owner deleted.
 
 ### First administrator

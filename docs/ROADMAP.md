@@ -201,6 +201,7 @@ Done in this branch:
 
 - The Mushak 6.3 title prints `Tax Invoice` and `কর চালানপত্র` on one line. Both rule lines stay as they were
 - An administrator can hide the public website for maintenance. The switch is audited. The default is visible. The ERP and quotation share links stay available
+- The same screen turns the public contact form on or off, and can require the reCAPTCHA checkbox. The form defaults to on. reCAPTCHA defaults to off. The keys stay in the environment
 - The public site is a separate application and database. The ERP writes the flag file only when `PUBLIC_SITE_MAINTENANCE_FILE` is set. The public-site candidate reads `/home/ahmadcom/ahmad-private/public-site-maintenance` (or `AHMAD_MAINTENANCE_FILE`) on each public request and answers HTTP 503 while the file contains `1`. Until that file is shared on the host and the candidate is deployed, saving the switch does not change ahmad.com.bd
 
 Not done, and not claimed:

@@ -74,6 +74,8 @@ return [
     'public_site' => [
         'maintenance_file' => env('PUBLIC_SITE_MAINTENANCE_FILE', ''),
         'name' => 'Ahmad Solution Ltd.',
+        'recaptcha_site_key' => env('RECAPTCHA_SITE_KEY', ''),
+        'recaptcha_secret_key' => env('RECAPTCHA_SECRET_KEY', ''),
     ],
 
     'trusted_proxies' => array_values(array_filter(array_map(

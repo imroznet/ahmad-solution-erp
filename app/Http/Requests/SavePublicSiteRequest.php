@@ -18,6 +18,8 @@ class SavePublicSiteRequest extends FormRequest
     {
         return [
             'maintenance_enabled' => ['required', 'boolean'],
+            'contact_form_enabled' => ['required', 'boolean'],
+            'recaptcha_enabled' => ['required', 'boolean'],
         ];
     }
 }

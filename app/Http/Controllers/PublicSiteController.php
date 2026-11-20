@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SavePublicSiteRequest;
+use App\Models\User;
 use App\PublicSite\PublicSiteMaintenance;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,12 @@ class PublicSiteController extends Controller
     {
         return view('public-site.edit', [
             'enabled' => $maintenance->enabled(),
+            'contactFormEnabled' => $maintenance->contactFormEnabled(),
+            'recaptchaEnabled' => $maintenance->recaptchaEnabled(),
+            'recaptchaKeysPresent' => $maintenance->recaptchaKeysPresent(),
             'path' => $maintenance->path(),
+            'contactFormPath' => $maintenance->contactFormPath(),
+            'recaptchaPath' => $maintenance->recaptchaPath(),
             'shared' => $maintenance->sharedWithPublicSite(),
         ]);
     }
@@ -24,21 +30,43 @@ class PublicSiteController extends Controller
         PublicSiteMaintenance $maintenance,
         AuditLogger $audit,
     ): RedirectResponse {
-        $before = $maintenance->enabled();
-        $enabled = $request->boolean('maintenance_enabled');
-        $result = $maintenance->save($enabled, $request->user());
+        $before = [
+            'maintenance_enabled' => $maintenance->enabled(),
+            'contact_form_enabled' => $maintenance->contactFormEnabled(),
+            'recaptcha_enabled' => $maintenance->recaptchaEnabled(),
+        ];
+        $actor = $request->user();
 
-        $audit->record('public_site_updated', null, [
-            'maintenance_enabled' => $before,
-        ], [
-            'maintenance_enabled' => $result['enabled'],
+        if (! $actor instanceof User) {
+            abort(403);
+        }
+
+        $result = $maintenance->save(
+            $request->boolean('maintenance_enabled'),
+            $request->boolean('contact_form_enabled'),
+            $request->boolean('recaptcha_enabled'),
+            $actor,
+        );
+
+        $audit->record('public_site_updated', null, $before, [
+            'maintenance_enabled' => $result['maintenance_enabled'],
+            'contact_form_enabled' => $result['contact_form_enabled'],
+            'recaptcha_enabled' => $result['recaptcha_enabled'],
+            'recaptcha_keys_present' => $result['recaptcha_keys_present'],
             'flag_written' => $result['written'],
+            'keys_written' => $result['keys_written'],
             'flag_path' => $maintenance->path(),
         ]);
 
-        $status = $result['written']
-            ? 'The public site flag was saved.'
-            : 'The choice was saved here, but the flag file could not be written. The public site was not changed.';
+        if (! $result['written']) {
+            $status = 'The choice was saved here, but the flag file could not be written. The public site was not changed.';
+        } elseif ($result['recaptcha_enabled'] && ! $result['recaptcha_keys_present']) {
+            $status = 'The public site flag was saved. reCAPTCHA keys missing.';
+        } elseif ($result['recaptcha_enabled'] && ! $result['keys_written']) {
+            $status = 'The public site flag was saved. The reCAPTCHA keys could not be written for the public site.';
+        } else {
+            $status = 'The public site flag was saved.';
+        }
 
         return redirect()->route('public-site.edit')->with('status', $status);
     }

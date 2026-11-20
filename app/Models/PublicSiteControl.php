@@ -9,6 +9,8 @@ class PublicSiteControl extends Model
 {
     protected $fillable = [
         'maintenance_enabled',
+        'contact_form_enabled',
+        'recaptcha_enabled',
         'updated_by',
     ];
 
@@ -16,6 +18,8 @@ class PublicSiteControl extends Model
     {
         return [
             'maintenance_enabled' => 'boolean',
+            'contact_form_enabled' => 'boolean',
+            'recaptcha_enabled' => 'boolean',
         ];
     }
 

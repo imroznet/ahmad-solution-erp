@@ -2,7 +2,7 @@
 
 namespace App\Tax;
 
-use App\Documents\PdfFactory;
+use App\Documents\MpdfFactory;
 use App\Models\MushakInvoice;
 use App\Quotations\QuotationPdfRenderer;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class TaxPdfRenderer
 {
     public function __construct(
-        private readonly PdfFactory $pdf,
+        private readonly MpdfFactory $pdf,
         private readonly QuotationPdfRenderer $letterhead,
     ) {}
 

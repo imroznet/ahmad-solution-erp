@@ -65,6 +65,17 @@ return [
         'number_prefix' => 'M63',
     ],
 
+    /*
+    | The public site (ahmad.com.bd) is a separate application with its own
+    | database. It reads this flag file. Set the same absolute path on both
+    | applications. An empty value keeps the flag inside this application's
+    | storage, which the public site does not read.
+    */
+    'public_site' => [
+        'maintenance_file' => env('PUBLIC_SITE_MAINTENANCE_FILE', ''),
+        'name' => 'Ahmad Solution Ltd.',
+    ],
+
     'trusted_proxies' => array_values(array_filter(array_map(
         trim(...),
         explode(',', (string) env('TRUSTED_PROXIES', '')),

@@ -170,6 +170,15 @@ jobs:
           test "$post_office" = "1"
           pdf_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100001_add_pdf_address_columns'" asl_erp)
           test "$pdf_migration" = "1"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf -e "UPDATE public_site_controls SET maintenance_enabled = 1 WHERE id = 1" asl_erp
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-public-site.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-public-site.sql
+          public_site_flag=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT maintenance_enabled FROM public_site_controls WHERE id = 1" asl_erp)
+          test "$public_site_flag" = "1"
+          public_site_permission=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug='public_site.manage'" asl_erp)
+          test "$public_site_permission" = "1"
+          public_site_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM public_site_controls" asl_erp)
+          test "$public_site_rows" = "1"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in

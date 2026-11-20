@@ -94,6 +94,8 @@ If the document tables are already imported and the measurement-unit table is no
 
 If the quotation permissions are already imported, import `deploy/upgrade-quotation-self-approval.sql` once. It adds `quotations.approve_own` and grants it only to the super administrator. It does not grant that permission to any other role and does not restore other quotation grants. Importing it again does not duplicate the row. Do not re-import `deploy/upgrade-quotations-module.sql` only to add this permission, because that import puts back a default quotation grant that was removed.
 
+If the public-site switch is not in the database yet, import `deploy/upgrade-public-site.sql` once. It creates `public_site_controls` when that table is missing, inserts the visible default only when row 1 is missing, adds `public_site.manage`, and grants it to the administrator and super administrator. Importing it again does not turn a later maintenance flag back off and does not duplicate the permission. Set `PUBLIC_SITE_MAINTENANCE_FILE=/home/ahmadcom/ahmad-private/public-site-maintenance` in the ERP environment so the switch writes the file the public site reads. Leave it empty until that path is confirmed on the host. The ERP itself stays available either way.
+
 `artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role. The unit seeder fills the starter list only when the table is empty, so a later seed does not restore a symbol the owner deleted.
 
 ### First administrator

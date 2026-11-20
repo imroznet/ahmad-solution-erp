@@ -81,7 +81,7 @@ Done in this branch:
 - A response after the validity date expires an unanswered sent or approved revision and does not store a response. The validity date itself can still be accepted or rejected
 - States: draft, submitted for approval, approved, sent, accepted, rejected, expired, and cancelled. Only the listed transitions are allowed
 - A new revision from an approved, sent, rejected, or expired quotation. The previous revision, its lines, snapshot, terms, and totals stay
-- Approval by someone other than the revision's creator and latest submitter, including a super administrator
+- Approval by someone other than the revision's creator and latest submitter. A role with `quotations.approve_own` may approve its own quotation. The super administrator has that permission. Other roles receive it only from the Roles page
 - An explicit send record. Email is not sent
 - A share link whose raw token is shown once. The database stores the SHA-256 hash, an expiry, and revocation. The public page can record one acceptance or rejection for the current sent revision
 - A PDF of the revision being viewed, rendered when requested and not stored under `public/`

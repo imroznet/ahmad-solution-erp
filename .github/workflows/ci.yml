@@ -102,7 +102,8 @@ jobs:
           php artisan asl:export-delivery-documents-sql
           php artisan asl:export-tax-sql
           php artisan asl:export-units-sql
-          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-module.sql deploy/upgrade-units-module.sql
+          php artisan asl:export-quotation-self-approval-sql
+          git diff --exit-code -- deploy/reference-data.sql deploy/company-reference-data.sql deploy/upgrade-company-module.sql deploy/upgrade-parties-module.sql deploy/upgrade-quotations-module.sql deploy/upgrade-delivery-documents-module.sql deploy/upgrade-tax-module.sql deploy/upgrade-units-module.sql deploy/upgrade-quotation-self-approval.sql
           cat > /tmp/mysql-client.cnf <<'EOF'
           [client]
           host=127.0.0.1
@@ -133,7 +134,11 @@ jobs:
           sales_suppliers=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='suppliers.view'" asl_erp)
           test "$sales_suppliers" = "0"
           quotation_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Quotations'" asl_erp)
-          test "$quotation_permissions" = "9"
+          test "$quotation_permissions" = "10"
+          sales_self_approval=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-manager' AND p.slug='quotations.approve_own'" asl_erp)
+          test "$sales_self_approval" = "0"
+          super_self_approval=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='super-administrator' AND p.slug='quotations.approve_own'" asl_erp)
+          test "$super_self_approval" = "1"
           challan_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Challans'" asl_erp)
           test "$challan_permissions" = "8"
           invoice_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Invoices'" asl_erp)
@@ -198,7 +203,11 @@ jobs:
           upgraded_quotations=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug='quotations.view'" asl_upgrade)
           test "$upgraded_quotations" = "1"
           upgraded_quotation_group=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Quotations'" asl_upgrade)
-          test "$upgraded_quotation_group" = "9"
+          test "$upgraded_quotation_group" = "10"
+          upgraded_self_approval=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-manager' AND p.slug='quotations.approve_own'" asl_upgrade)
+          test "$upgraded_self_approval" = "0"
+          upgraded_super_self=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='super-administrator' AND p.slug='quotations.approve_own'" asl_upgrade)
+          test "$upgraded_super_self" = "1"
           upgraded_sales_quotes=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='quotations.view'" asl_upgrade)
           test "$upgraded_sales_quotes" = "1"
           upgraded_sales_approve=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='sales-executive' AND p.slug='quotations.approve'" asl_upgrade)

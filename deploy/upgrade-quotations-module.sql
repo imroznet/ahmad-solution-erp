@@ -241,6 +241,10 @@ INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `descriptio
 SELECT 37, 'Record quotation responses', 'quotations.respond', 'Quotations', 'Record a customer acceptance or rejection against the sent revision.', NOW(), NOW() FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM (SELECT `id`, `slug` FROM `permissions`) AS `existing_permissions` WHERE `existing_permissions`.`id` = 37 OR `existing_permissions`.`slug` = 'quotations.respond');
 
+INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `description`, `created_at`, `updated_at`)
+SELECT 73, 'Approve own quotations', 'quotations.approve_own', 'Quotations', 'Approve a submitted quotation the user created or submitted themself. Without it, a user can only approve quotations prepared by someone else.', NOW(), NOW() FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM (SELECT `id`, `slug` FROM `permissions`) AS `existing_permissions` WHERE `existing_permissions`.`id` = 73 OR `existing_permissions`.`slug` = 'quotations.approve_own');
+
 INSERT INTO `permission_role` (`role_id`, `permission_id`)
 SELECT 1, 29 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM (SELECT `role_id`, `permission_id` FROM `permission_role`) AS `existing_grants` WHERE `existing_grants`.`role_id` = 1 AND `existing_grants`.`permission_id` = 29);
@@ -276,6 +280,10 @@ WHERE NOT EXISTS (SELECT 1 FROM (SELECT `role_id`, `permission_id` FROM `permiss
 INSERT INTO `permission_role` (`role_id`, `permission_id`)
 SELECT 1, 37 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM (SELECT `role_id`, `permission_id` FROM `permission_role`) AS `existing_grants` WHERE `existing_grants`.`role_id` = 1 AND `existing_grants`.`permission_id` = 37);
+
+INSERT INTO `permission_role` (`role_id`, `permission_id`)
+SELECT 1, 73 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM (SELECT `role_id`, `permission_id` FROM `permission_role`) AS `existing_grants` WHERE `existing_grants`.`role_id` = 1 AND `existing_grants`.`permission_id` = 73);
 
 INSERT INTO `permission_role` (`role_id`, `permission_id`)
 SELECT 2, 29 FROM DUAL

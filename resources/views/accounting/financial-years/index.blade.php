@@ -1,6 +1,6 @@
 <x-layouts.app title="Financial years">
     <h1 class="text-xl font-semibold">Financial years</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Each year has its own start and end. Government rules can change them, so the software does not assume a July–June year or any other fixed period. A journal date has to fall inside one of these years, or inside the year saved on the company profile.</p>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Each year has its own start and end. Government rules can change them, so the software does not assume a July–June year or any other fixed period. A journal date has to fall inside one of these years, or inside the year saved on the company profile. Changing a year keeps every journal already dated in it inside the new dates.</p>
     @include('accounting.partials.errors')
 
     @if ($profileYear)

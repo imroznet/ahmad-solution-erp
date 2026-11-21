@@ -11,6 +11,7 @@ use App\Authorization\PermissionCatalog;
 use App\Models\Account;
 use App\Models\BankAccount;
 use App\Models\CompanyProfile;
+use App\Models\FinancialYear;
 use App\Models\Journal;
 use App\Models\JournalLine;
 use App\Models\MfsAccount;
@@ -381,6 +382,39 @@ class AccountingLedgerTest extends TestCase
         $oldYear = Journal::query()->whereDate('journal_date', '1999-06-15')->firstOrFail();
         $this->assertSame('1999-01-01', $oldYear->financial_year_starts_on?->toDateString());
         $this->assertSame('1999-12-31', $oldYear->financial_year_ends_on?->toDateString());
+    }
+
+    public function test_editing_a_used_financial_year_keeps_its_journals_covered(): void
+    {
+        $cash = $this->account('cash');
+        $sales = $this->account('sales_revenue');
+        $this->actingAs($this->admin)->post(route('financial-years.store'), [
+            'starts_on' => '1999-01-01',
+            'ends_on' => '1999-12-31',
+        ])->assertRedirect();
+        $this->actingAs($this->admin)->post(route('journals.store'), $this->payload([
+            ['account_id' => $cash->id, 'debit' => '10.00', 'credit' => ''],
+            ['account_id' => $sales->id, 'debit' => '', 'credit' => '10.00'],
+        ], '1999-06-15'))->assertRedirect()->assertSessionHasNoErrors();
+        $year = FinancialYear::query()->whereDate('starts_on', '1999-01-01')->firstOrFail();
+
+        $this->actingAs($this->admin)->put(route('financial-years.update', $year), [
+            'starts_on' => '2000-01-01',
+            'ends_on' => '2000-12-31',
+        ])->assertRedirect()->assertSessionHasErrors('year');
+        $year->refresh();
+        $this->assertSame('1999-01-01', $year->startsOn());
+        $journal = Journal::query()->whereDate('journal_date', '1999-06-15')->firstOrFail();
+        $this->assertSame('1999-12-31', $journal->financial_year_ends_on?->toDateString());
+
+        $this->actingAs($this->admin)->put(route('financial-years.update', $year), [
+            'starts_on' => '1999-01-01',
+            'ends_on' => '1999-06-30',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $journal->refresh();
+        $this->assertSame('1999-06-30', $journal->financial_year_ends_on?->toDateString());
+        $this->actingAs($this->admin)->post(route('journals.post', $journal))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('posted', $journal->fresh()?->status->value);
     }
 
     public function test_a_bank_opening_balance_cannot_predate_the_account(): void

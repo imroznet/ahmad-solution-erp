@@ -4,7 +4,9 @@ namespace App\Accounting;
 
 use App\Models\CompanyProfile;
 use App\Models\FinancialYear;
+use App\Models\Journal;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Resolves a journal date to a financial year the company has entered.
@@ -56,13 +58,19 @@ final class FinancialYearCalendar
     {
         $starts = $this->day($starts);
         $ends = $this->day($ends);
+        $previousStart = $year->startsOn();
+        $previousEnd = $year->endsOn();
         $this->assertSpan($starts, $ends);
         $this->assertNoOverlap($starts, $ends, (int) $year->id, true);
-        $year->starts_on = Carbon::parse($starts);
-        $year->ends_on = Carbon::parse($ends);
-        $year->save();
 
-        return $year;
+        return DB::transaction(function () use ($year, $starts, $ends, $previousStart, $previousEnd): FinancialYear {
+            $this->realignJournals($previousStart, $previousEnd, $starts, $ends);
+            $year->starts_on = Carbon::parse($starts);
+            $year->ends_on = Carbon::parse($ends);
+            $year->save();
+
+            return $year;
+        });
     }
 
     public function syncProfile(mixed $previousStart, mixed $previousEnd, string $starts, string $ends): void
@@ -72,6 +80,12 @@ final class FinancialYearCalendar
         $this->assertSpan($starts, $ends);
         $previous = $this->findExact($previousStart, $previousEnd);
         $this->assertNoOverlap($starts, $ends, $previous instanceof FinancialYear ? (int) $previous->id : null, false);
+        $oldStart = $this->asDate($previousStart);
+        $oldEnd = $this->asDate($previousEnd);
+
+        if ($oldStart instanceof Carbon && $oldEnd instanceof Carbon) {
+            $this->realignJournals($oldStart->toDateString(), $oldEnd->toDateString(), $starts, $ends);
+        }
 
         if ($previous instanceof FinancialYear) {
             $previous->starts_on = Carbon::parse($starts);
@@ -109,6 +123,55 @@ final class FinancialYearCalendar
             'starts' => $start->toDateString(),
             'ends' => $end->toDateString(),
         ];
+    }
+
+    private function realignJournals(string $previousStart, string $previousEnd, string $starts, string $ends): void
+    {
+        if ($previousStart === '' || $previousEnd === '') {
+            return;
+        }
+
+        $journals = Journal::query()
+            ->whereDate('journal_date', '>=', $previousStart)
+            ->whereDate('journal_date', '<=', $previousEnd)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($journals as $journal) {
+            $date = $journal->journalDateString();
+
+            if ($date >= $starts && $date <= $ends) {
+                continue;
+            }
+
+            if ($this->coveredByAnotherYear($date, $previousStart, $previousEnd)) {
+                continue;
+            }
+
+            throw new AccountingException('A journal is dated in this financial year. The new dates have to keep covering those journals.');
+        }
+
+        Journal::query()
+            ->whereDate('journal_date', '>=', $previousStart)
+            ->whereDate('journal_date', '<=', $previousEnd)
+            ->whereDate('journal_date', '>=', $starts)
+            ->whereDate('journal_date', '<=', $ends)
+            ->update([
+                'financial_year_starts_on' => $starts,
+                'financial_year_ends_on' => $ends,
+            ]);
+    }
+
+    private function coveredByAnotherYear(string $date, string $previousStart, string $previousEnd): bool
+    {
+        return FinancialYear::query()
+            ->whereDate('starts_on', '<=', $date)
+            ->whereDate('ends_on', '>=', $date)
+            ->where(function ($query) use ($previousStart, $previousEnd): void {
+                $query->whereDate('starts_on', '!=', $previousStart)
+                    ->orWhereDate('ends_on', '!=', $previousEnd);
+            })
+            ->exists();
     }
 
     private function assertSpan(string $starts, string $ends): void

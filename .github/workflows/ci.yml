@@ -186,6 +186,29 @@ jobs:
           test "$contact_form" = "0"
           recaptcha_flag=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT recaptcha_enabled FROM public_site_controls WHERE id = 1" asl_erp)
           test "$recaptcha_flag" = "1"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf -e "UPDATE chart_of_accounts SET name = 'Petty cash renamed' WHERE system_key = 'cash'" asl_erp
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-accounting-phase-1.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-accounting-phase-1.sql
+          cash_name=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT name FROM chart_of_accounts WHERE system_key = 'cash'" asl_erp)
+          test "$cash_name" = "Petty cash renamed"
+          system_accounts=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM chart_of_accounts WHERE system_key IS NOT NULL" asl_erp)
+          test "$system_accounts" = "7"
+          bank_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM bank_accounts" asl_erp)
+          test "$bank_rows" = "0"
+          mfs_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM mfs_accounts" asl_erp)
+          test "$mfs_rows" = "0"
+          accounting_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Accounting'" asl_erp)
+          test "$accounting_permissions" = "9"
+          manager_journals=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accounts-manager' AND p.slug='journals.post'" asl_erp)
+          test "$manager_journals" = "0"
+          accountant_journals=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accountant' AND p.slug='journals.post'" asl_erp)
+          test "$accountant_journals" = "1"
+          opened_on=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_erp' AND TABLE_NAME='bank_accounts' AND COLUMN_NAME='opened_on'")
+          test "$opened_on" = "1"
+          admin_opening=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='administrator' AND p.slug='opening_balances.manage'" asl_erp)
+          test "$admin_opening" = "1"
+          accounting_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_21_100001_create_accounting_ledger'" asl_erp)
+          test "$accounting_migration" = "1"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in

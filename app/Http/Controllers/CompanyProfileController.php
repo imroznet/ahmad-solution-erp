@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\AccountingException;
+use App\Accounting\FinancialYearCalendar;
 use App\Company\PrivateFileStore;
-use App\Company\SuggestedFinancialYear;
 use App\Http\Requests\UpdateCompanyProfileRequest;
 use App\Models\CompanyProfile;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -56,31 +58,47 @@ class CompanyProfileController extends Controller
     {
         return view('company.edit', [
             'profile' => CompanyProfile::primary(),
-            'suggestedYear' => SuggestedFinancialYear::julyToJune(),
         ]);
     }
 
-    public function update(UpdateCompanyProfileRequest $request, AuditLogger $audit, PrivateFileStore $files): RedirectResponse
+    public function update(UpdateCompanyProfileRequest $request, AuditLogger $audit, PrivateFileStore $files, FinancialYearCalendar $years): RedirectResponse
     {
         $actor = $this->actor($request->user());
         $attributes = $request->safe()->except(['logo', 'remove_logo']);
         $before = [];
 
-        $profile = DB::transaction(function () use ($attributes, $actor, &$before): CompanyProfile {
-            $profile = CompanyProfile::query()->lockForUpdate()->orderBy('id')->first();
+        try {
+            $profile = DB::transaction(function () use ($attributes, $actor, &$before, $years): CompanyProfile {
+                $profile = CompanyProfile::query()->lockForUpdate()->orderBy('id')->first();
 
-            if (! $profile instanceof CompanyProfile) {
-                $profile = new CompanyProfile(['singleton_key' => 'primary']);
-            } else {
-                $before = Arr::only($profile->toArray(), self::AUDIT_KEYS);
-            }
+                $previousStart = null;
+                $previousEnd = null;
 
-            $profile->fill($attributes);
-            $profile->updated_by = $actor->id;
-            $profile->save();
+                if (! $profile instanceof CompanyProfile) {
+                    $profile = new CompanyProfile(['singleton_key' => 'primary']);
+                } else {
+                    $before = Arr::only($profile->toArray(), self::AUDIT_KEYS);
+                    $previousStart = $this->dateString($profile->getAttribute('financial_year_starts_on'));
+                    $previousEnd = $this->dateString($profile->getAttribute('financial_year_ends_on'));
+                }
 
-            return $profile;
-        });
+                $profile->fill($attributes);
+                $profile->updated_by = $actor->id;
+                $profile->save();
+                $years->syncProfile(
+                    $previousStart,
+                    $previousEnd,
+                    $this->dateString($profile->getAttribute('financial_year_starts_on')),
+                    $this->dateString($profile->getAttribute('financial_year_ends_on')),
+                );
+
+                return $profile;
+            });
+        } catch (AccountingException $exception) {
+            return back()->withInput()->withErrors([
+                'financial_year_ends_on' => $exception->getMessage(),
+            ]);
+        }
 
         $logoChange = 'unchanged';
 
@@ -113,6 +131,19 @@ class CompanyProfileController extends Controller
         ], actor: $actor);
 
         return redirect()->route('company.show')->with('status', 'Company profile saved.');
+    }
+
+    private function dateString(mixed $value): string
+    {
+        if ($value instanceof Carbon) {
+            return $value->toDateString();
+        }
+
+        if (! is_string($value) || $value === '') {
+            return '';
+        }
+
+        return Carbon::parse($value)->toDateString();
     }
 
     public function logo(): StreamedResponse

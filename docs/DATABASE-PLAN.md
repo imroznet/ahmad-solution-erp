@@ -49,7 +49,7 @@ There is no `company_settings` table. The single profile holds the currency, fin
 
 ## Party design
 
-The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. Receivables, payables, VDS, AIT, and journal lines are not in this schema yet. Opening balances and payments are not in this schema.
+The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. VDS, AIT, and journal lines are separate tables. Receipts, payments, and a receivables subledger are not in this schema. Opening balances are journals, not a balance column.
 
 Archived parties and closed addresses are not soft-deleted. A soft delete would hide them from status filters and from a normal foreign key. There is no delete action. Division, district, and upazila are indexed text fields so a locality can be entered without a gazetteer table.
 
@@ -123,17 +123,27 @@ Mushak 6.3 is not a commercial invoice and not Mushak 6.6. No other Mushak form 
 
 ### Accounting
 
+Phase 1 tables:
+
 - `chart_of_accounts`
-- `fiscal_periods`
+- `financial_years` — start and end dates the company enters. No year is inserted by the install
+- `bank_accounts` and `mfs_accounts` — one asset row each, entered in the ERP, including `opened_on`. The install inserts none of these
+- `journal_number_sequences`
 - `journal_entries`
 - `journal_lines`
+
+Not in this phase:
+
+- `fiscal_periods`
 - `payments`
 - `receipts`
 - `payment_allocations`
 - `expense_categories`
 - `expenses`
+- fixed assets, depreciation, and payroll
+- a supplier-bill document
 
-A posted journal's debit total must equal its credit total inside a database transaction. The posted row is then immutable. There is no automatic posting until a mapping has been written and tested.
+A posted journal's debit total must equal its credit total inside a database transaction. The posted row is then immutable. There is no automatic posting from a sales document until a mapping has been written and tested. VAT from an issued Mushak 6.3 is that later posting, and Output VAT Payable is the account reserved for it. Opening balances are posted journals with their own dates, not columns on the account. Each account appears on only one opening journal. A bank or MFS opening date cannot be earlier than `opened_on`. The ledger does not accrue interest.
 
 ### Sharing for later documents
 

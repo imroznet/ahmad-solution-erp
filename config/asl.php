@@ -66,6 +66,14 @@ return [
     ],
 
     /*
+    | Manual journals. The number is JE-{Asia/Dhaka year}-{sequence}.
+    | A posted journal is not edited. Bank accounts are not seeded.
+    */
+    'journals' => [
+        'number_prefix' => 'JE',
+    ],
+
+    /*
     | The public site (ahmad.com.bd) is a separate application with its own
     | database. It reads this flag file. Set the same absolute path on both
     | applications. An empty value keeps the flag inside this application's

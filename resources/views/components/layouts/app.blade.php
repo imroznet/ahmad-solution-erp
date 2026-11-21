@@ -23,6 +23,7 @@
         $salesVisible = $currentUser?->hasPermission('quotations.view') || $currentUser?->hasPermission('challans.view') || $currentUser?->hasPermission('invoices.view');
         $taxVisible = $currentUser?->hasPermission('mushak.view') || $currentUser?->hasPermission('tax_rules.view') || $currentUser?->hasPermission('vds.view') || $currentUser?->hasPermission('ait.view');
         $partyVisible = $currentUser?->hasPermission('customers.view') || $currentUser?->hasPermission('suppliers.view') || $currentUser?->hasPermission('parties.view');
+        $accountingVisible = $currentUser?->hasPermission('accounting.view') || $currentUser?->hasPermission('chart_of_accounts.view') || $currentUser?->hasPermission('journals.view') || $currentUser?->hasPermission('opening_balances.manage') || $currentUser?->hasPermission('reports.view');
         $companyVisible = $currentUser?->hasPermission('company.view') || $currentUser?->hasPermission('company.documents.view') || $currentUser?->hasPermission('units.view');
         $adminVisible = $currentUser?->hasPermission('quotations.approve') || $currentUser?->hasPermission('users.view') || $currentUser?->hasPermission('roles.view') || $currentUser?->hasPermission('audit.view') || $currentUser?->hasPermission('system.view') || $currentUser?->hasPermission('public_site.manage');
     @endphp
@@ -70,6 +71,28 @@
                     @endif
                     @if ($currentUser?->hasPermission('ait.view'))
                         <x-nav-link :href="route('deductions.index', ['kind' => 'ait'])" :active="request()->routeIs('deductions.*') && request()->route('kind') === 'ait'" icon="landmark" label="AIT" />
+                    @endif
+                @endif
+
+                @if ($accountingVisible)
+                    <p class="nav-copy px-3 pt-3 text-xs font-medium uppercase tracking-wide text-white/60">Accounting</p>
+                    @if ($currentUser?->hasPermission('accounting.view'))
+                        <x-nav-link :href="route('accounting.home')" :active="request()->routeIs('accounting.home')" icon="book" label="Overview" />
+                    @endif
+                    @if ($currentUser?->hasPermission('chart_of_accounts.view'))
+                        <x-nav-link :href="route('accounts.index')" :active="request()->routeIs('accounts.*')" icon="list" label="Chart of accounts" />
+                        <x-nav-link :href="route('cash-accounts.index')" :active="request()->routeIs('cash-accounts.*', 'bank-accounts.*', 'mfs-accounts.*')" icon="landmark" label="Bank and MFS" />
+                        <x-nav-link :href="route('financial-years.index')" :active="request()->routeIs('financial-years.*')" icon="check" label="Financial years" />
+                    @endif
+                    @if ($currentUser?->hasPermission('journals.view'))
+                        <x-nav-link :href="route('journals.index')" :active="request()->routeIs('journals.*')" icon="file" label="Journals" />
+                    @endif
+                    @if ($currentUser?->hasPermission('opening_balances.manage'))
+                        <x-nav-link :href="route('opening-balances.edit')" :active="request()->routeIs('opening-balances.*')" icon="receipt" label="Opening balances" />
+                    @endif
+                    @if ($currentUser?->hasPermission('reports.view'))
+                        <x-nav-link :href="route('reports.trial-balance')" :active="request()->routeIs('reports.trial-balance')" icon="activity" label="Trial balance" />
+                        <x-nav-link :href="route('reports.general-ledger')" :active="request()->routeIs('reports.general-ledger')" icon="activity" label="General ledger" />
                     @endif
                 @endif
 

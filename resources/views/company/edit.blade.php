@@ -63,11 +63,12 @@
             </div>
             <div>
                 <label for="financial_year_starts_on" class="block text-sm font-medium">Financial year start</label>
-                <input id="financial_year_starts_on" name="financial_year_starts_on" type="date" required value="{{ old('financial_year_starts_on', $profile?->financial_year_starts_on?->toDateString() ?? $suggestedYear['starts']) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
+                <input id="financial_year_starts_on" name="financial_year_starts_on" type="date" required value="{{ old('financial_year_starts_on', $profile?->financial_year_starts_on?->toDateString()) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
             </div>
             <div>
                 <label for="financial_year_ends_on" class="block text-sm font-medium">Financial year end</label>
-                <input id="financial_year_ends_on" name="financial_year_ends_on" type="date" required value="{{ old('financial_year_ends_on', $profile?->financial_year_ends_on?->toDateString() ?? $suggestedYear['ends']) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
+                <input id="financial_year_ends_on" name="financial_year_ends_on" type="date" required value="{{ old('financial_year_ends_on', $profile?->financial_year_ends_on?->toDateString()) }}" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
+                <p class="mt-1 text-xs text-muted">This is the current year. Add or edit other years on the Financial years screen. The dates are not fixed in the software.</p>
             </div>
             <div>
                 <label for="currency_code" class="block text-sm font-medium">Default currency</label>

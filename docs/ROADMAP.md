@@ -212,10 +212,31 @@ Not done, and not claimed:
 
 ## Milestone 7 — accounting
 
-- Chart of accounts, journals, receipts, payments, and allocations
-- Trial balance, ledger, profit and loss, balance sheet, and cash flow
-- Posting only through tested mappings
-- Immutability of posted journals
+Phase 1 is in this branch:
+
+- Chart of accounts for assets, liabilities, equity, income, and expenses. Codes use 1xxx, 2xxx, 3xxx, 4xxx, and 5xxx
+- Locked system accounts: Cash in Hand, Accounts Receivable, Accounts Payable, Output VAT Payable, VDS Receivable, AIT Receivable, and Sales Revenue. A system account cannot be renamed, retyped, deactivated, or deleted
+- Bank and MFS accounts are assets added, edited, and deactivated on the Bank and MFS screen. None are seeded. Cash in Hand remains the only cash account created by the module. Each bank or MFS account stores the date it was opened
+- Financial years are entered and edited. The software does not assume a July–June year. The company profile holds the current year, and other years are added on the Financial years screen
+- Opening balances are balanced journals with an opening date. The go-live cut-off is the company registration date, 15 May 2025, stored on the profile when that date was empty. Each account is opened once. A bank or MFS opening cannot be dated before the account was opened. The first bank account opened on 2 November 2026, so that account's opening date cannot be earlier. The account itself is not seeded
+- Draft and posted journals. A posted journal is not edited or deleted. A reversal is a new journal that negates it
+- Numbers `JE-{Asia/Dhaka year}-{sequence}`. A failed create does not keep the number
+- Trial balance and general ledger from posted journals. Amounts are BDT at two decimal places
+- Permissions 75–81, 84, and 85. The administrator and the existing accountant receive them. The accounts manager does not. No new role is seeded
+- Output VAT Payable is reserved for the posting that will run when a Mushak 6.3 is issued. This phase does not post it
+- A supplier cost is a manual journal to an expense account. There is no supplier-bill module
+- The ledger does not accrue interest. A Shariah-compliant profit or markup is a journal entered when the bank or the owner instructs. A treatment a government rule requires is entered the same way
+
+Not done, and not claimed:
+
+- Receipts, payments, and allocations. The settlement list is ready for that later screen and is not a receipt
+- Profit and loss, balance sheet, and cash flow
+- Posting VAT from an issued Mushak 6.3, or posting other sales documents
+- Period close
+- Fixed assets, depreciation, and payroll
+- A seeded bank, branch, account number, or mobile number
+- An NBR certification, or a VAT rate chosen by the system
+- Back-posting old invoices
 
 ## Milestone 8 — mail and operations
 

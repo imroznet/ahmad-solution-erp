@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountingHomeController;
+use App\Http\Controllers\AccountingReportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\CashAccountController;
 use App\Http\Controllers\ChallanController;
 use App\Http\Controllers\CompanyAddressController;
 use App\Http\Controllers\CompanyDocumentController;
@@ -12,8 +16,11 @@ use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\DocumentCategoryController;
+use App\Http\Controllers\FinancialYearController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\JournalController;
 use App\Http\Controllers\MushakInvoiceController;
+use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
@@ -115,6 +122,100 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
         ->middleware('permission:units.manage')
         ->name('units.destroy');
+
+    Route::get('/accounting', AccountingHomeController::class)
+        ->middleware('permission:accounting.view')
+        ->name('accounting.home');
+
+    Route::get('/accounting/accounts', [AccountController::class, 'index'])
+        ->middleware('permission:chart_of_accounts.view')
+        ->name('accounts.index');
+    Route::post('/accounting/accounts', [AccountController::class, 'store'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('accounts.store');
+    Route::put('/accounting/accounts/{account}', [AccountController::class, 'update'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('accounts.update');
+    Route::delete('/accounting/accounts/{account}', [AccountController::class, 'destroy'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('accounts.destroy');
+
+    Route::get('/accounting/cash-accounts', [CashAccountController::class, 'index'])
+        ->middleware('permission:chart_of_accounts.view')
+        ->name('cash-accounts.index');
+    Route::post('/accounting/bank-accounts', [CashAccountController::class, 'storeBank'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('bank-accounts.store');
+    Route::put('/accounting/bank-accounts/{bankAccount}', [CashAccountController::class, 'updateBank'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('bank-accounts.update');
+    Route::delete('/accounting/bank-accounts/{bankAccount}', [CashAccountController::class, 'destroyBank'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('bank-accounts.destroy');
+    Route::post('/accounting/mfs-accounts', [CashAccountController::class, 'storeMfs'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('mfs-accounts.store');
+    Route::put('/accounting/mfs-accounts/{mfsAccount}', [CashAccountController::class, 'updateMfs'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('mfs-accounts.update');
+    Route::delete('/accounting/mfs-accounts/{mfsAccount}', [CashAccountController::class, 'destroyMfs'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('mfs-accounts.destroy');
+
+    Route::get('/accounting/financial-years', [FinancialYearController::class, 'index'])
+        ->middleware('permission:chart_of_accounts.view')
+        ->name('financial-years.index');
+    Route::post('/accounting/financial-years', [FinancialYearController::class, 'store'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('financial-years.store');
+    Route::put('/accounting/financial-years/{financialYear}', [FinancialYearController::class, 'update'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('financial-years.update');
+    Route::delete('/accounting/financial-years/{financialYear}', [FinancialYearController::class, 'destroy'])
+        ->middleware('permission:chart_of_accounts.manage')
+        ->name('financial-years.destroy');
+
+    Route::get('/accounting/opening-balances', [OpeningBalanceController::class, 'edit'])
+        ->middleware('permission:opening_balances.manage')
+        ->name('opening-balances.edit');
+    Route::post('/accounting/opening-balances', [OpeningBalanceController::class, 'store'])
+        ->middleware('permission:opening_balances.manage')
+        ->name('opening-balances.store');
+
+    Route::get('/accounting/journals', [JournalController::class, 'index'])
+        ->middleware('permission:journals.view')
+        ->name('journals.index');
+    Route::get('/accounting/journals/create', [JournalController::class, 'create'])
+        ->middleware('permission:journals.create')
+        ->name('journals.create');
+    Route::post('/accounting/journals', [JournalController::class, 'store'])
+        ->middleware('permission:journals.create')
+        ->name('journals.store');
+    Route::get('/accounting/journals/{journal}', [JournalController::class, 'show'])
+        ->middleware('permission:journals.view')
+        ->name('journals.show');
+    Route::get('/accounting/journals/{journal}/edit', [JournalController::class, 'edit'])
+        ->middleware('permission:journals.create')
+        ->name('journals.edit');
+    Route::put('/accounting/journals/{journal}', [JournalController::class, 'update'])
+        ->middleware('permission:journals.create')
+        ->name('journals.update');
+    Route::delete('/accounting/journals/{journal}', [JournalController::class, 'destroy'])
+        ->middleware('permission:journals.create')
+        ->name('journals.destroy');
+    Route::post('/accounting/journals/{journal}/post', [JournalController::class, 'post'])
+        ->middleware('permission:journals.post')
+        ->name('journals.post');
+    Route::post('/accounting/journals/{journal}/reverse', [JournalController::class, 'reverse'])
+        ->middleware('permission:journals.reverse')
+        ->name('journals.reverse');
+
+    Route::get('/accounting/trial-balance', [AccountingReportController::class, 'trialBalance'])
+        ->middleware('permission:reports.view')
+        ->name('reports.trial-balance');
+    Route::get('/accounting/general-ledger', [AccountingReportController::class, 'generalLedger'])
+        ->middleware('permission:reports.view')
+        ->name('reports.general-ledger');
 
     Route::get('/company', [CompanyProfileController::class, 'show'])
         ->middleware('permission:company.view')

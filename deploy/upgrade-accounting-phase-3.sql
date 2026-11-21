@@ -80,9 +80,45 @@ CREATE TABLE IF NOT EXISTS `payment_allocations` (
   CONSTRAINT `payment_allocations_journal_id_foreign` FOREIGN KEY (`journal_id`) REFERENCES `journal_entries` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Retained Earnings prefers code 3000. An equity account already on that code, with no
+-- system key, is claimed and reactivated. A different account keeps 3000, and this
+-- insert takes the lowest free code from 3000 through 3999. A second import does neither.
+UPDATE `chart_of_accounts`
+SET `system_key` = 'retained_earnings',
+    `is_active` = 1,
+    `updated_at` = NOW()
+WHERE `code` = '3000'
+  AND `type` = 'equity'
+  AND (`system_key` IS NULL OR `system_key` = '')
+  AND NOT EXISTS (
+    SELECT 1 FROM (
+      SELECT `id` FROM `chart_of_accounts` WHERE `system_key` = 'retained_earnings'
+    ) AS `existing_retained`
+  );
+
 INSERT INTO `chart_of_accounts` (`code`, `name`, `type`, `system_key`, `is_active`, `created_at`, `updated_at`)
-SELECT '3000', 'Retained Earnings', 'equity', 'retained_earnings', 1, NOW(), NOW() FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM (SELECT `system_key` FROM `chart_of_accounts`) AS `existing_accounts` WHERE `existing_accounts`.`system_key` = 'retained_earnings');
+SELECT `candidate`.`code`, 'Retained Earnings', 'equity', 'retained_earnings', 1, NOW(), NOW()
+FROM (
+  SELECT CONCAT('3', LPAD(`numbers`.`n`, 3, '0')) AS `code`
+  FROM (
+    SELECT `ones`.`d` + `tens`.`d` * 10 + `hundreds`.`d` * 100 AS `n`
+    FROM
+      (SELECT 0 AS `d` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS `ones`
+      CROSS JOIN (SELECT 0 AS `d` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS `tens`
+      CROSS JOIN (SELECT 0 AS `d` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS `hundreds`
+  ) AS `numbers`
+  WHERE `numbers`.`n` <= 999
+) AS `candidate`
+WHERE NOT EXISTS (
+  SELECT 1 FROM (SELECT `system_key` FROM `chart_of_accounts`) AS `existing_accounts`
+  WHERE `existing_accounts`.`system_key` = 'retained_earnings'
+)
+AND NOT EXISTS (
+  SELECT 1 FROM (SELECT `code` FROM `chart_of_accounts`) AS `existing_codes`
+  WHERE `existing_codes`.`code` = `candidate`.`code`
+)
+ORDER BY `candidate`.`code`
+LIMIT 1;
 
 INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `description`, `created_at`, `updated_at`)
 SELECT 83, 'Record supplier payments', 'payments.create', 'Accounting', 'Record and void a supplier payment. The payment posts immediately. A recorded payment is not edited.', NOW(), NOW() FROM DUAL

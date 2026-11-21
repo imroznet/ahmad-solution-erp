@@ -324,6 +324,13 @@ jobs:
           test "$upgrade_receipt_tables" = "3"
           upgrade_receipt_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_21_140001_create_accounting_receipts'" asl_upgrade)
           test "$upgrade_receipt_migration" = "1"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade <<'SQL'
+          INSERT INTO chart_of_accounts (code, name, type, is_active, created_at, updated_at)
+          SELECT '3000', 'Owner equity', 'equity', 0, NOW(), NOW() FROM DUAL
+          WHERE NOT EXISTS (
+            SELECT 1 FROM (SELECT code FROM chart_of_accounts) AS existing_codes WHERE existing_codes.code = '3000'
+          );
+          SQL
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-accounting-phase-3.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-accounting-phase-3.sql
           upgrade_payment_permission=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE id=83 AND slug='payments.create'" asl_upgrade)
@@ -336,6 +343,10 @@ jobs:
           test "$upgrade_manager_payments" = "0"
           upgrade_retained=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM chart_of_accounts WHERE system_key='retained_earnings' AND code='3000'" asl_upgrade)
           test "$upgrade_retained" = "1"
+          upgrade_retained_name=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT name FROM chart_of_accounts WHERE system_key='retained_earnings'" asl_upgrade)
+          test "$upgrade_retained_name" = "Owner equity"
+          upgrade_retained_active=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT is_active FROM chart_of_accounts WHERE system_key='retained_earnings'" asl_upgrade)
+          test "$upgrade_retained_active" = "1"
           upgrade_system_accounts=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM chart_of_accounts WHERE system_key IS NOT NULL" asl_upgrade)
           test "$upgrade_system_accounts" = "8"
           upgrade_payment_tables=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='asl_upgrade' AND TABLE_NAME IN ('payments', 'payment_allocations', 'payment_number_sequences')")
@@ -392,7 +403,7 @@ jobs:
           test "$history_custom" = "1"
           history_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_07_100003_preserve_delivery_document_line_history'" asl_line_history)
           test "$history_migration" = "1"
-          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_quantity_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_receipt_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_payment_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_quantity_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_receipt_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_payment_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_quantity_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_receipt_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_payment_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_period_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_quantity_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_receipt_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_payment_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_period_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           DB_DATABASE=asl_quotation_lock php scripts/check-quotation-number-lock.php
           DB_DATABASE=asl_quotation_year php scripts/check-quotation-new-year-lock.php
           DB_DATABASE=asl_quotation_totals php scripts/check-quotation-total-bounds.php
@@ -400,6 +411,7 @@ jobs:
           DB_DATABASE=asl_document_quantity_lock php scripts/check-document-quantity-lock.php
           DB_DATABASE=asl_receipt_lock php scripts/check-receipt-allocation-lock.php
           DB_DATABASE=asl_payment_lock php scripts/check-payment-allocation-lock.php
+          DB_DATABASE=asl_period_lock php scripts/check-period-close-lock.php
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

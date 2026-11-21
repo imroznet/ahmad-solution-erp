@@ -50,6 +50,7 @@ final class PeriodCloser
                 throw new AccountingException('Add the next financial year before closing this one.');
             }
 
+            $this->pauseWhileLocked();
             $journal = $this->carryForward($locked, $next, $actor);
             $locked->closed_at = now();
             $locked->closed_by = $actor->id;
@@ -191,6 +192,15 @@ final class PeriodCloser
             'memo' => 'Close '.$year->startsOn().' to '.$year->endsOn(),
             'lines' => $lines,
         ], $actor, (int) $year->id);
+    }
+
+    private function pauseWhileLocked(): void
+    {
+        // The disposable MySQL rehearsal holds the year lock so a posting waits,
+        // then reads closed_at with a current read. Production leaves this unset.
+        if (getenv('ASL_PERIOD_CLOSE_DELAY') === '1') {
+            sleep(1);
+        }
     }
 
     private function lock(FinancialYear $year): FinancialYear

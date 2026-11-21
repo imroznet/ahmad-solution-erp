@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Accounting\AccountChart;
 use App\Accounting\AccountingException;
 use App\Accounting\AccountingInstaller;
+use App\Accounting\AccountType;
 use App\Accounting\JournalBalance;
 use App\Accounting\JournalWriter;
 use App\Accounting\Ledger;
@@ -65,6 +67,54 @@ class AccountingLedgerTest extends TestCase
         $this->assertContains(86, $ids);
         $this->assertNotContains('receipts.view', array_column(PermissionCatalog::permissions(), 'slug'));
         $this->assertNotContains('payments.view', array_column(PermissionCatalog::permissions(), 'slug'));
+    }
+
+    public function test_install_claims_an_equity_account_that_already_uses_code_3000(): void
+    {
+        DB::table('chart_of_accounts')->where('system_key', 'retained_earnings')->delete();
+        Account::query()->create([
+            'code' => '3000',
+            'name' => 'Owner equity',
+            'type' => AccountType::Equity,
+            'is_active' => false,
+        ]);
+
+        app(AccountChart::class)->install();
+
+        $rows = Account::query()->where('code', '3000')->get();
+        $this->assertCount(1, $rows);
+        $claimed = $rows->first();
+        $this->assertNotNull($claimed);
+        $this->assertSame('retained_earnings', $claimed->system_key);
+        $this->assertSame('Owner equity', $claimed->name);
+        $this->assertTrue($claimed->is_active);
+        $this->assertSame(1, Account::query()->where('system_key', 'retained_earnings')->count());
+    }
+
+    public function test_install_uses_the_next_code_when_3000_is_not_an_equity_account(): void
+    {
+        DB::table('chart_of_accounts')->where('system_key', 'retained_earnings')->delete();
+        Account::query()->create([
+            'code' => '3000',
+            'name' => 'Misplaced cash',
+            'type' => AccountType::Asset,
+            'is_active' => true,
+        ]);
+        Account::query()->create([
+            'code' => '3001',
+            'name' => 'Share capital',
+            'type' => AccountType::Equity,
+            'is_active' => true,
+        ]);
+
+        app(AccountChart::class)->install();
+
+        $retained = Account::query()->where('system_key', 'retained_earnings')->firstOrFail();
+        $occupant = Account::query()->where('code', '3000')->firstOrFail();
+        $this->assertSame('3002', $retained->code);
+        $this->assertSame('Retained Earnings', $retained->name);
+        $this->assertSame('Misplaced cash', $occupant->name);
+        $this->assertNull($occupant->system_key);
     }
 
     public function test_an_unbalanced_journal_cannot_post_and_a_posted_journal_cannot_change(): void

@@ -374,14 +374,20 @@ final class JournalWriter
 
     private function guardClosed(string $date): void
     {
-        $closed = FinancialYear::query()
+        // Period close holds this same row while it builds the carry-forward.
+        // The lock makes the post wait, and the row returned here is the current
+        // closed_at, so a post cannot land after that result was calculated.
+        $years = FinancialYear::query()
             ->whereDate('starts_on', '<=', $date)
             ->whereDate('ends_on', '>=', $date)
-            ->whereNotNull('closed_at')
-            ->exists();
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
 
-        if ($closed) {
-            throw new AccountingException('That date is in a closed financial year.');
+        foreach ($years as $year) {
+            if ($year->isClosed()) {
+                throw new AccountingException('That date is in a closed financial year.');
+            }
         }
     }
 

@@ -212,7 +212,7 @@ jobs:
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in
-              *party*|*quotation*|*delivery_document*|*tax*) continue ;;
+              *party*|*quotation*|*delivery_document*|*tax*|*accounting*) continue ;;
             esac
             DB_DATABASE=asl_upgrade php artisan migrate --force --no-interaction --path="$path"
           done
@@ -223,6 +223,15 @@ jobs:
           SQL
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-parties-module.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-parties-module.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-accounting-phase-1.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf -e "UPDATE chart_of_accounts SET name = 'Petty cash renamed' WHERE system_key = 'cash'" asl_upgrade
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-accounting-phase-1.sql
+          upgrade_cash_name=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT name FROM chart_of_accounts WHERE system_key = 'cash'" asl_upgrade)
+          test "$upgrade_cash_name" = "Petty cash renamed"
+          upgrade_banks=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM bank_accounts" asl_upgrade)
+          test "$upgrade_banks" = "0"
+          upgrade_accounting_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_21_100001_create_accounting_ledger'" asl_upgrade)
+          test "$upgrade_accounting_migration" = "1"
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-pdf-addresses.sql
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-pdf-addresses.sql
           upgrade_post_office=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='asl_upgrade' AND TABLE_NAME='party_addresses' AND COLUMN_NAME='post_office'" )

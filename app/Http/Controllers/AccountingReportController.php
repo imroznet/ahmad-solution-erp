@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Accounting\Ledger;
+use App\Accounting\ReceivablesAging;
 use App\Http\Requests\GeneralLedgerRequest;
 use App\Models\Account;
 use App\Models\Party;
@@ -39,6 +40,13 @@ class AccountingReportController extends Controller
             'from' => $request->input('from'),
             'to' => $request->input('to'),
             'party' => $partyId > 0 ? $partyId : null,
+        ]);
+    }
+
+    public function receivablesAging(ReceivablesAging $aging): View
+    {
+        return view('accounting.reports.receivables-aging', [
+            'report' => $aging->build(),
         ]);
     }
 }

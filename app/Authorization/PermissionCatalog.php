@@ -98,6 +98,7 @@ final class PermissionCatalog
             self::permission(79, 'Create journals', 'journals.create', 'Accounting', 'Create, edit, and delete a draft journal.'),
             self::permission(80, 'Post journals', 'journals.post', 'Accounting', 'Post a balanced draft. Posting does not change a posted journal.'),
             self::permission(81, 'Reverse journals', 'journals.reverse', 'Accounting', 'Add a journal that negates a posted journal.'),
+            self::permission(82, 'Record customer receipts', 'receipts.create', 'Accounting', 'Record and void a customer receipt. The receipt posts immediately. A recorded receipt is not edited.'),
             self::permission(84, 'View accounting reports', 'reports.view', 'Accounting', 'View the trial balance and the general ledger.'),
             self::permission(85, 'Manage opening balances', 'opening_balances.manage', 'Accounting', 'Enter opening balances and an opening date. Each account is opened once. A bank or MFS line cannot be dated before that account was opened.'),
         ];
@@ -201,6 +202,7 @@ final class PermissionCatalog
                     'journals.create',
                     'journals.post',
                     'journals.reverse',
+                    'receipts.create',
                     'reports.view',
                     'opening_balances.manage',
                 ],
@@ -313,6 +315,7 @@ final class PermissionCatalog
                     'journals.create',
                     'journals.post',
                     'journals.reverse',
+                    'receipts.create',
                     'reports.view',
                     'opening_balances.manage',
                 ],

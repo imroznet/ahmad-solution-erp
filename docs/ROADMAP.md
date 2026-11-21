@@ -212,7 +212,7 @@ Not done, and not claimed:
 
 ## Milestone 7 — accounting
 
-Phase 1 is in this branch:
+Phase 1 is merged:
 
 - Chart of accounts for assets, liabilities, equity, income, and expenses. Codes use 1xxx, 2xxx, 3xxx, 4xxx, and 5xxx
 - Locked system accounts: Cash in Hand, Accounts Receivable, Accounts Payable, Output VAT Payable, VDS Receivable, AIT Receivable, and Sales Revenue. A system account cannot be renamed, retyped, deactivated, or deleted
@@ -223,20 +223,29 @@ Phase 1 is in this branch:
 - Numbers `JE-{Asia/Dhaka year}-{sequence}`. A failed create does not keep the number
 - Trial balance and general ledger from posted journals. Amounts are BDT at two decimal places
 - Permissions 75–81, 84, and 85. The administrator and the existing accountant receive them. The accounts manager does not. No new role is seeded
-- Output VAT Payable is reserved for the posting that will run when a Mushak 6.3 is issued. This phase does not post it
 - A supplier cost is a manual journal to an expense account. There is no supplier-bill module
 - The ledger does not accrue interest. A Shariah-compliant profit or markup is a journal entered when the bank or the owner instructs. A treatment a government rule requires is entered the same way
 
+Phase 2 is in this branch:
+
+- Issuing a commercial invoice posts Accounts Receivable to Sales Revenue for the invoice total, with the customer on the receivable line. A zero total posts nothing. Void reverses that journal when one exists. An invoice issued before this phase has no journal, and voiding it still works
+- Issuing a Mushak 6.3 posts Accounts Receivable to Output VAT Payable for the stored VAT, rounded half-up to two decimal places. Explicit zero VAT posts nothing. Void reverses that journal when one exists. A delivery challan posts nothing
+- Customer receipts, numbered `RCPT-{Asia/Dhaka year}-{sequence}`. A receipt posts when it is recorded: the settlement account, VDS Receivable, and AIT Receivable, credited to Accounts Receivable. VDS and AIT are typed. They are not calculated, and they are not credited to Output VAT Payable. A recorded receipt is not edited. Void reverses its journal
+- Allocations apply a receipt to issued invoices of the same customer. Partial allocation leaves the remainder as an advance on Accounts Receivable. There is no advance account. An invoice cannot be voided while a live allocation exists
+- Receivables aging from issued invoices, issued Mushak VAT, opening receivable lines, and receipts that are not void
+- Permission 82, `receipts.create`, for the administrator and the existing accountant. The accounts manager does not receive it. There is no `receipts.view`, `payments.create`, or `periods.manage`
+- Invoices and Mushak forms issued before this phase are not back-posted
+
 Not done, and not claimed:
 
-- Receipts, payments, and allocations. The settlement list is ready for that later screen and is not a receipt
-- Profit and loss, balance sheet, and cash flow
-- Posting VAT from an issued Mushak 6.3, or posting other sales documents
+- Supplier payments, payables aging, profit and loss, balance sheet, and cash flow
+- The entry that applies VDS at filing. VDS stays a receivable until that later entry
 - Period close
 - Fixed assets, depreciation, and payroll
 - A seeded bank, branch, account number, or mobile number
 - An NBR certification, or a VAT rate chosen by the system
 - Back-posting old invoices
+- Supplementary duty posted to the ledger
 
 ## Milestone 8 — mail and operations
 

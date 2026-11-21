@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Accounting\AccountingException;
 use App\Documents\DocumentAuthorizer;
 use App\Documents\DocumentRuleException;
 use App\Models\CommercialInvoice;
@@ -18,6 +19,10 @@ trait AttemptsDocument
         } catch (DocumentRuleException $exception) {
             throw ValidationException::withMessages([
                 $exception->field => $exception->getMessage(),
+            ]);
+        } catch (AccountingException $exception) {
+            throw ValidationException::withMessages([
+                'document' => $exception->getMessage(),
             ]);
         }
     }

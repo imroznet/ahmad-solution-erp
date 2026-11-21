@@ -13,6 +13,7 @@ use App\Models\CompanyProfile;
 use App\Models\DeliveryChallan;
 use App\Models\DeliveryChallanEvent;
 use App\Models\DeliveryChallanLine;
+use App\Models\FinancialYear;
 use App\Models\Party;
 use App\Models\Quotation;
 use App\Models\QuotationLine;
@@ -33,6 +34,10 @@ class DeliveryDocumentTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00', 'Asia/Dhaka'));
+        FinancialYear::query()->create([
+            'starts_on' => '2026-07-01',
+            'ends_on' => '2027-06-30',
+        ]);
     }
 
     protected function tearDown(): void

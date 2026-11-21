@@ -19,6 +19,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Money;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -145,6 +146,36 @@ class AccountingLedgerTest extends TestCase
         $this->assertSame(1, Journal::query()->where('reverses_journal_id', $journal->id)->count());
     }
 
+    public function test_a_reversal_posts_against_an_account_deactivated_after_the_original(): void
+    {
+        $this->actingAs($this->admin)->post(route('accounts.store'), [
+            'code' => '5100',
+            'name' => 'Office supplies',
+            'type' => 'expense',
+            'parent_id' => '',
+        ])->assertRedirect();
+        $expense = Account::query()->where('code', '5100')->firstOrFail();
+        $cash = $this->account('cash');
+        $this->actingAs($this->admin)->post(route('journals.store'), $this->payload([
+            ['account_id' => $expense->id, 'debit' => '25.00', 'credit' => ''],
+            ['account_id' => $cash->id, 'debit' => '', 'credit' => '25.00'],
+        ]))->assertRedirect();
+        $journal = Journal::query()->latest('id')->firstOrFail();
+        $this->actingAs($this->admin)->post(route('journals.post', $journal))->assertRedirect();
+        $this->actingAs($this->admin)->put(route('accounts.update', $expense), [
+            'name' => 'Office supplies',
+            'parent_id' => '',
+            'is_active' => '0',
+        ])->assertRedirect();
+
+        $this->actingAs($this->admin)->post(route('journals.store'), $this->payload([
+            ['account_id' => $expense->id, 'debit' => '1.00', 'credit' => ''],
+            ['account_id' => $cash->id, 'debit' => '', 'credit' => '1.00'],
+        ]))->assertRedirect()->assertSessionHasErrors('journal');
+        $this->actingAs($this->admin)->post(route('journals.reverse', $journal))->assertRedirect();
+        $this->assertSame(1, Journal::query()->where('reverses_journal_id', $journal->id)->count());
+    }
+
     public function test_a_failed_create_does_not_consume_a_journal_number(): void
     {
         $year = now()->timezone('Asia/Dhaka')->format('Y');
@@ -236,6 +267,31 @@ class AccountingLedgerTest extends TestCase
             ->assertDontSee('9,999.99');
     }
 
+    public function test_the_trial_balance_shows_each_account_at_its_net_balance(): void
+    {
+        $cash = $this->account('cash');
+        $sales = $this->account('sales_revenue');
+        $this->postedJournal();
+        $this->actingAs($this->admin)->post(route('journals.store'), $this->payload([
+            ['account_id' => $sales->id, 'debit' => '40.00', 'credit' => ''],
+            ['account_id' => $cash->id, 'debit' => '', 'credit' => '40.00'],
+        ]))->assertRedirect();
+        $refund = Journal::query()->latest('id')->firstOrFail();
+        $this->actingAs($this->admin)->post(route('journals.post', $refund))->assertRedirect();
+
+        $report = app(Ledger::class)->trialBalance();
+        $cashRow = collect($report['rows'])->firstWhere('code', $cash->code);
+        $salesRow = collect($report['rows'])->firstWhere('code', $sales->code);
+        $this->assertIsArray($cashRow);
+        $this->assertIsArray($salesRow);
+        $this->assertSame('60.00', $cashRow['debit']);
+        $this->assertSame('0.00', $cashRow['credit']);
+        $this->assertSame('0.00', $salesRow['debit']);
+        $this->assertSame('60.00', $salesRow['credit']);
+        $this->assertSame('0.00', $report['difference']);
+        $this->assertSame($report['debit_total'], $report['credit_total']);
+    }
+
     public function test_the_general_ledger_runs_in_date_order_and_can_filter_by_party(): void
     {
         $cash = $this->account('cash');
@@ -286,6 +342,18 @@ class AccountingLedgerTest extends TestCase
             ],
         ])->assertRedirect();
         $this->assertSame(1, Journal::query()->where('source', 'opening')->count());
+        $this->assertSame(2, DB::table('account_openings')->count());
+        $opening = Journal::query()->where('source', 'opening')->firstOrFail();
+
+        try {
+            DB::table('account_openings')->insert([
+                'account_id' => $cash->id,
+                'journal_id' => $opening->id,
+            ]);
+            $this->fail('A second opening row for the same account was stored.');
+        } catch (UniqueConstraintViolationException) {
+            $this->assertSame(2, DB::table('account_openings')->count());
+        }
 
         $this->actingAs($this->admin)->post(route('opening-balances.store'), [
             'journal_date' => $this->today(),

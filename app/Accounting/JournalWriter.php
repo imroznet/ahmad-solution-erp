@@ -2,6 +2,7 @@
 
 namespace App\Accounting;
 
+use App\Models\Account;
 use App\Models\BankAccount;
 use App\Models\Journal;
 use App\Models\JournalLine;
@@ -9,6 +10,7 @@ use App\Models\MfsAccount;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Closure;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -141,7 +143,7 @@ final class JournalWriter
                 'journal_date' => $date,
                 'memo' => 'Reversal of '.$locked->number,
                 'lines' => $swapped,
-            ], true);
+            ], true, false, true);
             $reversal = $this->store(
                 $this->numbers->allocate(),
                 JournalStatus::Posted,
@@ -231,7 +233,7 @@ final class JournalWriter
      * @param  array{journal_date: string, memo?: string|null, lines: list<mixed>}  $input
      * @return array{date: string, year_starts: string, year_ends: string, memo: string|null, lines: list<array{account_id: int, debit: string, credit: string, party_id: int|null, memo: string|null}>}
      */
-    private function prepare(array $input, bool $requireBalance, bool $skipIdleRows = false): array
+    private function prepare(array $input, bool $requireBalance, bool $skipIdleRows = false, bool $allowInactive = false): array
     {
         $date = $input['journal_date'];
         $year = $this->financialYear($date);
@@ -246,7 +248,7 @@ final class JournalWriter
             'year_starts' => $year['starts'],
             'year_ends' => $year['ends'],
             'memo' => $memo === '' ? null : $memo,
-            'lines' => $this->lines->parse($input['lines'], $requireBalance, $skipIdleRows),
+            'lines' => $this->lines->parse($input['lines'], $requireBalance, $skipIdleRows, $allowInactive),
         ];
     }
 
@@ -263,11 +265,14 @@ final class JournalWriter
      */
     private function guardOpeningAccounts(string $date, array $lines): void
     {
-        $ids = array_column($lines, 'account_id');
+        $ids = array_values(array_unique(array_column($lines, 'account_id')));
 
         if ($ids === []) {
             return;
         }
+
+        // The row lock is taken before the opening check. A second post for the same account waits, then sees the first journal.
+        Account::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
 
         $already = JournalLine::query()
             ->whereIn('account_id', $ids)
@@ -362,9 +367,31 @@ final class JournalWriter
         ]);
         $journal->save();
         $this->storeLines($journal, $prepared['lines']);
+
+        if ($source === JournalSource::Opening) {
+            $this->recordOpenings($journal, $prepared['lines']);
+        }
+
         $journal->load('lines');
 
         return $journal;
+    }
+
+    /**
+     * @param  list<array{account_id: int, debit: string, credit: string, party_id: int|null, memo: string|null}>  $lines
+     */
+    private function recordOpenings(Journal $journal, array $lines): void
+    {
+        foreach (array_unique(array_column($lines, 'account_id')) as $accountId) {
+            try {
+                DB::table('account_openings')->insert([
+                    'account_id' => $accountId,
+                    'journal_id' => $journal->id,
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                throw new AccountingException('Opening balances for one of these accounts have already been entered.');
+            }
+        }
     }
 
     /**

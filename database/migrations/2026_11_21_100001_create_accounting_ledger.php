@@ -105,12 +105,18 @@ return new class extends Migration
             $table->index(['account_id', 'journal_id']);
         });
 
+        Schema::create('account_openings', function (Blueprint $table) {
+            $table->foreignId('account_id')->primary()->constrained('chart_of_accounts')->restrictOnDelete();
+            $table->foreignId('journal_id')->constrained('journal_entries')->restrictOnDelete();
+        });
+
         app(AccountChart::class)->install();
         app(AccountingInstaller::class)->install();
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('account_openings');
         Schema::dropIfExists('mfs_accounts');
         Schema::dropIfExists('bank_accounts');
         Schema::dropIfExists('journal_lines');

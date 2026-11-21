@@ -1,6 +1,6 @@
 <x-layouts.app title="Trial balance">
     <h1 class="text-xl font-semibold">Trial balance</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Posted journals only. Drafts are left out. Amounts are BDT. Debits minus credits must be zero. A non-zero difference is a defect in the ledger.</p>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Posted journals only. Drafts are left out. Each account is shown at its net balance, on the debit side or the credit side. Amounts are BDT. Debits minus credits must be zero. A non-zero difference is a defect in the ledger.</p>
     <div class="mt-6 overflow-x-auto rounded border border-line bg-white">
         <table class="min-w-full text-sm">
             <thead class="border-b border-line text-left text-muted">

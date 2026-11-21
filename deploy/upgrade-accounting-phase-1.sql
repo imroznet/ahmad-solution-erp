@@ -125,6 +125,15 @@ CREATE TABLE IF NOT EXISTS `journal_lines` (
   CONSTRAINT `journal_lines_party_id_foreign` FOREIGN KEY (`party_id`) REFERENCES `parties` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `account_openings` (
+  `account_id` bigint unsigned NOT NULL,
+  `journal_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`account_id`),
+  KEY `account_openings_journal_id_foreign` (`journal_id`),
+  CONSTRAINT `account_openings_account_id_foreign` FOREIGN KEY (`account_id`) REFERENCES `chart_of_accounts` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `account_openings_journal_id_foreign` FOREIGN KEY (`journal_id`) REFERENCES `journal_entries` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO `chart_of_accounts` (`code`, `name`, `type`, `system_key`, `is_active`, `created_at`, `updated_at`)
 SELECT '1000', 'Cash in Hand', 'asset', 'cash', 1, NOW(), NOW() FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM (SELECT `system_key` FROM `chart_of_accounts`) AS `existing_accounts` WHERE `existing_accounts`.`system_key` = 'cash');

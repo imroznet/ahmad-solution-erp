@@ -18,7 +18,7 @@ final class JournalLineSet
      * @param  list<mixed>  $rows
      * @return list<array{account_id: int, debit: string, credit: string, party_id: int|null, memo: string|null}>
      */
-    public function parse(array $rows, bool $requireBalance, bool $skipIdleRows = false): array
+    public function parse(array $rows, bool $requireBalance, bool $skipIdleRows = false, bool $allowInactive = false): array
     {
         $pending = [];
 
@@ -85,7 +85,7 @@ final class JournalLineSet
                 throw new AccountingException('Choose an account from the list.');
             }
 
-            if (! $account->is_active) {
+            if (! $allowInactive && ! $account->is_active) {
                 throw new AccountingException($account->name.' is deactivated and cannot be used for a new posting.');
             }
 

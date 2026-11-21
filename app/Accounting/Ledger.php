@@ -5,6 +5,7 @@ namespace App\Accounting;
 use App\Models\Account;
 use App\Models\JournalLine;
 use App\Models\Party;
+use App\Support\Decimal;
 use App\Support\Money;
 
 /**
@@ -30,14 +31,15 @@ final class Ledger
 
         foreach (Account::query()->orderBy('code')->get() as $account) {
             $pair = $sums[$account->id] ?? [Money::zero(), Money::zero()];
-            $debitTotal = $debitTotal->plus($pair[0]);
-            $creditTotal = $creditTotal->plus($pair[1]);
+            [$debit, $credit] = $this->netBalance($pair[0], $pair[1]);
+            $debitTotal = $debitTotal->plus($debit);
+            $creditTotal = $creditTotal->plus($credit);
             $rows[] = [
                 'code' => $account->code,
                 'name' => $account->name,
                 'type' => $account->type->label(),
-                'debit' => $pair[0]->amount(),
-                'credit' => $pair[1]->amount(),
+                'debit' => $debit->amount(),
+                'credit' => $credit->amount(),
                 'active' => (bool) $account->is_active,
             ];
         }
@@ -103,6 +105,24 @@ final class Ledger
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array{0: Money, 1: Money}
+     */
+    private function netBalance(Money $debit, Money $credit): array
+    {
+        $difference = Decimal::of($debit->minus($credit)->amount());
+
+        if ($difference->isNegative()) {
+            return [Money::zero(), $credit->minus($debit)];
+        }
+
+        if ($difference->isZero()) {
+            return [Money::zero(), Money::zero()];
+        }
+
+        return [$debit->minus($credit), Money::zero()];
     }
 
     /**

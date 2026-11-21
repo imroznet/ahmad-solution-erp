@@ -24,6 +24,7 @@ use App\Http\Controllers\OpeningBalanceController;
 use App\Http\Controllers\PartyAddressController;
 use App\Http\Controllers\PartyContactController;
 use App\Http\Controllers\PartyController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PublicQuotationController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\QuotationApprovalController;
@@ -175,6 +176,12 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/accounting/financial-years/{financialYear}', [FinancialYearController::class, 'destroy'])
         ->middleware('permission:chart_of_accounts.manage')
         ->name('financial-years.destroy');
+    Route::post('/accounting/financial-years/{financialYear}/close', [FinancialYearController::class, 'close'])
+        ->middleware('permission:periods.manage')
+        ->name('financial-years.close');
+    Route::post('/accounting/financial-years/{financialYear}/reopen', [FinancialYearController::class, 'reopen'])
+        ->middleware('permission:periods.manage')
+        ->name('financial-years.reopen');
 
     Route::get('/accounting/opening-balances', [OpeningBalanceController::class, 'edit'])
         ->middleware('permission:opening_balances.manage')
@@ -227,6 +234,22 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('permission:receipts.create')
         ->name('receipts.void');
 
+    Route::get('/accounting/payments', [PaymentController::class, 'index'])
+        ->middleware('permission:accounting.view')
+        ->name('payments.index');
+    Route::get('/accounting/payments/create', [PaymentController::class, 'create'])
+        ->middleware('permission:payments.create')
+        ->name('payments.create');
+    Route::post('/accounting/payments', [PaymentController::class, 'store'])
+        ->middleware('permission:payments.create')
+        ->name('payments.store');
+    Route::get('/accounting/payments/{payment}', [PaymentController::class, 'show'])
+        ->middleware('permission:accounting.view')
+        ->name('payments.show');
+    Route::post('/accounting/payments/{payment}/void', [PaymentController::class, 'void'])
+        ->middleware('permission:payments.create')
+        ->name('payments.void');
+
     Route::get('/accounting/trial-balance', [AccountingReportController::class, 'trialBalance'])
         ->middleware('permission:reports.view')
         ->name('reports.trial-balance');
@@ -236,6 +259,18 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/accounting/receivables-aging', [AccountingReportController::class, 'receivablesAging'])
         ->middleware('permission:reports.view')
         ->name('reports.receivables-aging');
+    Route::get('/accounting/payables-aging', [AccountingReportController::class, 'payablesAging'])
+        ->middleware('permission:reports.view')
+        ->name('reports.payables-aging');
+    Route::get('/accounting/profit-and-loss', [AccountingReportController::class, 'profitAndLoss'])
+        ->middleware('permission:reports.view')
+        ->name('reports.profit-and-loss');
+    Route::get('/accounting/balance-sheet', [AccountingReportController::class, 'balanceSheet'])
+        ->middleware('permission:reports.view')
+        ->name('reports.balance-sheet');
+    Route::get('/accounting/cash-flow', [AccountingReportController::class, 'cashFlow'])
+        ->middleware('permission:reports.view')
+        ->name('reports.cash-flow');
 
     Route::get('/company', [CompanyProfileController::class, 'show'])
         ->middleware('permission:company.view')

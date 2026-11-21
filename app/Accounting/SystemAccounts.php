@@ -5,8 +5,9 @@ namespace App\Accounting;
 /**
  * Accounts the ledger module creates and then locks.
  * Cash in Hand is the only seeded cash account. Bank and MFS accounts are added later.
- * Output VAT Payable is the account Phase 2 will credit when a Mushak 6.3 is issued.
- * This module does not post that VAT, and it does not accrue interest.
+ * Output VAT Payable is the account credited when a Mushak 6.3 is issued.
+ * Retained Earnings receives the result of a closed financial year.
+ * This module does not accrue interest.
  */
 final class SystemAccounts
 {
@@ -22,6 +23,7 @@ final class SystemAccounts
             ['code' => '1300', 'name' => 'AIT Receivable', 'type' => AccountType::Asset, 'key' => 'ait_receivable'],
             ['code' => '2000', 'name' => 'Accounts Payable', 'type' => AccountType::Liability, 'key' => 'accounts_payable'],
             ['code' => '2100', 'name' => 'Output VAT Payable', 'type' => AccountType::Liability, 'key' => 'output_vat_payable'],
+            ['code' => '3000', 'name' => 'Retained Earnings', 'type' => AccountType::Equity, 'key' => 'retained_earnings'],
             ['code' => '4000', 'name' => 'Sales Revenue', 'type' => AccountType::Income, 'key' => 'sales_revenue'],
         ];
     }

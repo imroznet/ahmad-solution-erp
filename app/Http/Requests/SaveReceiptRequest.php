@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Accounting\CashFlowCategory;
 use App\Accounting\ReceiptWriter;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -26,6 +27,7 @@ class SaveReceiptRequest extends FormRequest
             'ait_deducted' => ['nullable', 'string', 'max:20'],
             'mode' => ['required', 'string', 'in:'.implode(',', ReceiptWriter::MODES)],
             'reference' => ['nullable', 'string', 'max:80'],
+            'cash_flow_category' => ['nullable', 'string', 'in:'.implode(',', array_column(CashFlowCategory::cases(), 'value'))],
             'allocations' => ['nullable', 'array'],
             'allocations.*.commercial_invoice_id' => ['nullable', 'integer'],
             'allocations.*.amount' => ['nullable', 'string', 'max:20'],

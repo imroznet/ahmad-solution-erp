@@ -15,7 +15,13 @@ class FinancialYear extends Model
     protected $casts = [
         'starts_on' => 'date',
         'ends_on' => 'date',
+        'closed_at' => 'datetime',
     ];
+
+    public function isClosed(): bool
+    {
+        return $this->closed_at !== null;
+    }
 
     public function startsOn(): string
     {

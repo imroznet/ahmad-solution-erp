@@ -13,6 +13,7 @@
         <div><dt class="text-muted">VDS deducted</dt><dd class="tabular-nums">{{ \App\Support\Money::of($receipt->decimalAttribute('vds_deducted'))->groupedAmount() }}</dd></div>
         <div><dt class="text-muted">AIT deducted</dt><dd class="tabular-nums">{{ \App\Support\Money::of($receipt->decimalAttribute('ait_deducted'))->groupedAmount() }}</dd></div>
         <div><dt class="text-muted">Reference</dt><dd>{{ $receipt->reference }}</dd></div>
+        <div><dt class="text-muted">Cash flow</dt><dd>{{ \App\Accounting\CashFlowCategory::tryFrom((string) $receipt->cash_flow_category)?->label() }}</dd></div>
     </dl>
     <h2 class="mt-6 text-sm font-medium">Allocations</h2>
     <div class="mt-2 overflow-x-auto rounded border border-line bg-white">

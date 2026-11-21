@@ -47,6 +47,14 @@
                 <input id="reference" name="reference" value="{{ old('reference') }}" maxlength="80" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
             </div>
             <div>
+                <label for="cash_flow_category" class="block text-sm font-medium">Cash flow</label>
+                <select id="cash_flow_category" name="cash_flow_category" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
+                    @foreach (\App\Accounting\CashFlowCategory::ordered() as $category)
+                        <option value="{{ $category->value }}" @selected(old('cash_flow_category', 'operating') === $category->value)>{{ $category->label() }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
                 <label for="vds_deducted" class="block text-sm font-medium">VDS deducted</label>
                 <input id="vds_deducted" name="vds_deducted" value="{{ old('vds_deducted', '0.00') }}" inputmode="decimal" class="mt-1 w-full rounded border border-line px-3 py-2 text-sm">
             </div>

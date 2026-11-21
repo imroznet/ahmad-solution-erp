@@ -10,6 +10,8 @@ enum JournalSource: string
     case Invoice = 'invoice';
     case Mushak = 'mushak';
     case Receipt = 'receipt';
+    case Payment = 'payment';
+    case CarryForward = 'carry_forward';
 
     public function label(): string
     {
@@ -20,6 +22,8 @@ enum JournalSource: string
             self::Invoice => 'Commercial invoice',
             self::Mushak => 'Mushak 6.3',
             self::Receipt => 'Customer receipt',
+            self::Payment => 'Supplier payment',
+            self::CarryForward => 'Year close',
         };
     }
 }

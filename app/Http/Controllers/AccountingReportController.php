@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\FinancialStatements;
 use App\Accounting\Ledger;
+use App\Accounting\PayablesAging;
 use App\Accounting\ReceivablesAging;
 use App\Http\Requests\GeneralLedgerRequest;
 use App\Models\Account;
 use App\Models\Party;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class AccountingReportController extends Controller
@@ -47,6 +50,34 @@ class AccountingReportController extends Controller
     {
         return view('accounting.reports.receivables-aging', [
             'report' => $aging->build(),
+        ]);
+    }
+
+    public function payablesAging(PayablesAging $aging): View
+    {
+        return view('accounting.reports.payables-aging', [
+            'report' => $aging->build(),
+        ]);
+    }
+
+    public function profitAndLoss(Request $request, FinancialStatements $statements): View
+    {
+        return view('accounting.reports.profit-and-loss', [
+            'report' => $statements->profitAndLoss($request->input('from'), $request->input('to')),
+        ]);
+    }
+
+    public function balanceSheet(Request $request, FinancialStatements $statements): View
+    {
+        return view('accounting.reports.balance-sheet', [
+            'report' => $statements->balanceSheet($request->input('as_of')),
+        ]);
+    }
+
+    public function cashFlow(Request $request, FinancialStatements $statements): View
+    {
+        return view('accounting.reports.cash-flow', [
+            'report' => $statements->cashFlow($request->input('from'), $request->input('to')),
         ]);
     }
 }

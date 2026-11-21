@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
     'ait_deducted',
     'mode',
     'reference',
+    'cash_flow_category',
     'status',
     'void_reason',
     'voided_at',

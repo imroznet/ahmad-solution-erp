@@ -99,8 +99,10 @@ final class PermissionCatalog
             self::permission(80, 'Post journals', 'journals.post', 'Accounting', 'Post a balanced draft. Posting does not change a posted journal.'),
             self::permission(81, 'Reverse journals', 'journals.reverse', 'Accounting', 'Add a journal that negates a posted journal.'),
             self::permission(82, 'Record customer receipts', 'receipts.create', 'Accounting', 'Record and void a customer receipt. The receipt posts immediately. A recorded receipt is not edited.'),
-            self::permission(84, 'View accounting reports', 'reports.view', 'Accounting', 'View the trial balance and the general ledger.'),
+            self::permission(83, 'Record supplier payments', 'payments.create', 'Accounting', 'Record and void a supplier payment. The payment posts immediately. A recorded payment is not edited.'),
+            self::permission(84, 'View accounting reports', 'reports.view', 'Accounting', 'View the trial balance, general ledger, receivables and payables aging, profit and loss, balance sheet, and cash flow.'),
             self::permission(85, 'Manage opening balances', 'opening_balances.manage', 'Accounting', 'Enter opening balances and an opening date. Each account is opened once. A bank or MFS line cannot be dated before that account was opened.'),
+            self::permission(86, 'Manage financial periods', 'periods.manage', 'Accounting', 'Close a past financial year and carry its result into Retained Earnings. A closed year rejects new postings. Reopening a year is limited to the super administrator.'),
         ];
     }
 
@@ -203,8 +205,10 @@ final class PermissionCatalog
                     'journals.post',
                     'journals.reverse',
                     'receipts.create',
+                    'payments.create',
                     'reports.view',
                     'opening_balances.manage',
+                    'periods.manage',
                 ],
             ],
             [
@@ -316,8 +320,10 @@ final class PermissionCatalog
                     'journals.post',
                     'journals.reverse',
                     'receipts.create',
+                    'payments.create',
                     'reports.view',
                     'opening_balances.manage',
+                    'periods.manage',
                 ],
             ],
             [

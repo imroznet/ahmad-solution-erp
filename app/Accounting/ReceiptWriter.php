@@ -51,6 +51,7 @@ final class ReceiptWriter
                 'ait_deducted' => $prepared['ait']->amount(),
                 'mode' => $prepared['mode'],
                 'reference' => $prepared['reference'],
+                'cash_flow_category' => $prepared['category']->value,
                 'status' => ReceiptStatus::Recorded,
                 'created_by' => $actor->id,
             ]);
@@ -116,7 +117,7 @@ final class ReceiptWriter
 
     /**
      * @param  array<string, mixed>  $input
-     * @return array{party_id: int, account_id: int, date: string, received: Money, vds: Money, ait: Money, credit: Money, mode: string, reference: string|null, allocations: list<array{invoice_id: int, amount: Money}>}
+     * @return array{party_id: int, account_id: int, date: string, received: Money, vds: Money, ait: Money, credit: Money, mode: string, reference: string|null, category: CashFlowCategory, allocations: list<array{invoice_id: int, amount: Money}>}
      */
     private function prepare(array $input): array
     {
@@ -151,6 +152,7 @@ final class ReceiptWriter
             'credit' => $credit,
             'mode' => $mode,
             'reference' => $reference,
+            'category' => CashFlowCategory::fromInput($input['cash_flow_category'] ?? null),
             'allocations' => $allocations,
         ];
     }
@@ -421,6 +423,7 @@ final class ReceiptWriter
             'ait_deducted' => $receipt->decimalAttribute('ait_deducted'),
             'mode' => $receipt->mode,
             'reference' => $receipt->reference,
+            'cash_flow_category' => $receipt->cash_flow_category,
             'status' => $receipt->status->value,
             'allocations' => $receipt->allocations->map(fn ($allocation): array => [
                 'commercial_invoice_id' => $allocation->commercial_invoice_id,

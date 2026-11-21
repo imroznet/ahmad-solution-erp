@@ -215,7 +215,7 @@ Not done, and not claimed:
 Phase 1 is merged:
 
 - Chart of accounts for assets, liabilities, equity, income, and expenses. Codes use 1xxx, 2xxx, 3xxx, 4xxx, and 5xxx
-- Locked system accounts: Cash in Hand, Accounts Receivable, Accounts Payable, Output VAT Payable, VDS Receivable, AIT Receivable, and Sales Revenue. A system account cannot be renamed, retyped, deactivated, or deleted
+- Locked system accounts: Cash in Hand, Accounts Receivable, Accounts Payable, Output VAT Payable, VDS Receivable, AIT Receivable, Sales Revenue, and Retained Earnings. A system account cannot be renamed, retyped, deactivated, or deleted
 - Bank and MFS accounts are assets added, edited, and deactivated on the Bank and MFS screen. None are seeded. Cash in Hand remains the only cash account created by the module. Each bank or MFS account stores the date it was opened
 - Financial years are entered and edited. The software does not assume a July–June year. The company profile holds the current year, and other years are added on the Financial years screen
 - Opening balances are balanced journals with an opening date. The go-live cut-off is the company registration date, 15 May 2025, stored on the profile when that date was empty. Each account is opened once. A bank or MFS opening cannot be dated before the account was opened. The first bank account opened on 2 November 2026, so that account's opening date cannot be earlier. The account itself is not seeded
@@ -233,14 +233,21 @@ Phase 2 is in this branch:
 - Customer receipts, numbered `RCPT-{Asia/Dhaka year}-{sequence}`. A receipt posts when it is recorded: the settlement account, VDS Receivable, and AIT Receivable, credited to Accounts Receivable. VDS and AIT are typed. They are not calculated, and they are not credited to Output VAT Payable. A recorded receipt is not edited. Void reverses its journal
 - Allocations apply a receipt to issued invoices of the same customer. Partial allocation leaves the remainder as an advance on Accounts Receivable. There is no advance account. An invoice cannot be voided while a live allocation exists
 - Receivables aging as at Asia/Dhaka today, from issued invoices and Mushak VAT, opening receivable lines, manual receivable adjustments, and receipts that are not void. A later date is left out. The customer total matches posted Accounts Receivable as at that day
-- Permission 82, `receipts.create`, for the administrator and the existing accountant. The accounts manager does not receive it. There is no `receipts.view`, `payments.create`, or `periods.manage`
+- Permission 82, `receipts.create`, for the administrator and the existing accountant. The accounts manager does not receive it. There is no `receipts.view`
 - Invoices and Mushak forms issued before this phase are not back-posted
+
+Phase 3 is in this branch:
+
+- Supplier payments, numbered `PAYM-{Asia/Dhaka year}-{sequence}`. A payment posts when it is recorded: debit Accounts Payable for the supplier, credit the settlement account. There is no VDS or AIT line. A recorded payment is not edited. Void reverses its journal
+- Allocations apply a payment to posted manual journals that credit Accounts Payable for the same supplier. Partial allocation leaves the remainder as an advance on Accounts Payable. There is no advance account. A journal cannot be reversed while a live allocation exists
+- Payables aging as at Asia/Dhaka today, from those journals, opening payable lines, payable adjustments, and payments that are not void. A later date is left out. The supplier total matches posted Accounts Payable as at that day
+- Profit and loss, balance sheet, and direct cash flow. Cash flow uses receipts and payments that are not void, classified by the operating, investing, or financing choice stored on the document. A manual journal that moves cash stays out of cash flow
+- Retained Earnings, code `3000`. Closing a past financial year posts a balanced carry-forward on the first day of the next year and then rejects postings in the closed year. The year that contains today cannot be closed, and a year cannot be closed until a later year exists. Reopening is limited to the super administrator and reverses the carry-forward
+- Permissions 83, `payments.create`, and 86, `periods.manage`, for the administrator and the existing accountant. The accounts manager does not receive them. There is no `payments.view`
 
 Not done, and not claimed:
 
-- Supplier payments, payables aging, profit and loss, balance sheet, and cash flow
 - The entry that applies VDS at filing. VDS stays a receivable until that later entry
-- Period close
 - Fixed assets, depreciation, and payroll
 - A seeded bank, branch, account number, or mobile number
 - An NBR certification, or a VAT rate chosen by the system

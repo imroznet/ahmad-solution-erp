@@ -4,9 +4,11 @@ namespace App\Accounting;
 
 use App\Models\Account;
 use App\Models\BankAccount;
+use App\Models\FinancialYear;
 use App\Models\Journal;
 use App\Models\JournalLine;
 use App\Models\MfsAccount;
+use App\Models\PaymentAllocation;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Closure;
@@ -100,6 +102,7 @@ final class JournalWriter
             $this->guardDraft($locked);
             $stored = $this->storedInput($locked);
             $this->prepare($stored, true);
+            $this->guardClosed($locked->journalDateString());
             $locked->status = JournalStatus::Posted;
             $locked->posted_at = now();
             $locked->posted_by = $actor->id;
@@ -125,6 +128,8 @@ final class JournalWriter
             if ($locked->reversal()->exists()) {
                 throw new AccountingException('This journal already has a reversal.');
             }
+
+            $this->guardAllocatedPayment($locked);
 
             $swapped = [];
 
@@ -214,6 +219,35 @@ final class JournalWriter
                 true,
                 $sourceType,
                 $sourceId,
+                null,
+            );
+            $this->audit->record('journal_created', $journal, newValues: $this->snapshot($journal), actor: $actor);
+            $this->audit->record('journal_posted', $journal, newValues: $this->snapshot($journal), actor: $actor);
+
+            return $journal;
+        };
+
+        return $this->within($write);
+    }
+
+    /**
+     * Posts the year-close journal. It is not an account opening, so it does not use account_openings.
+     *
+     * @param  array{journal_date: string, memo?: string|null, lines: list<mixed>}  $input
+     */
+    public function postCarryForward(array $input, User $actor, int $yearId): Journal
+    {
+        $write = function () use ($input, $actor, $yearId): Journal {
+            $prepared = $this->prepare($input, true);
+            $journal = $this->store(
+                $this->numbers->allocate(),
+                JournalStatus::Posted,
+                JournalSource::CarryForward,
+                $prepared,
+                $actor,
+                true,
+                'financial_year',
+                $yearId,
                 null,
             );
             $this->audit->record('journal_created', $journal, newValues: $this->snapshot($journal), actor: $actor);
@@ -338,6 +372,31 @@ final class JournalWriter
         }
     }
 
+    private function guardClosed(string $date): void
+    {
+        $closed = FinancialYear::query()
+            ->whereDate('starts_on', '<=', $date)
+            ->whereDate('ends_on', '>=', $date)
+            ->whereNotNull('closed_at')
+            ->exists();
+
+        if ($closed) {
+            throw new AccountingException('That date is in a closed financial year.');
+        }
+    }
+
+    private function guardAllocatedPayment(Journal $journal): void
+    {
+        $allocated = PaymentAllocation::query()
+            ->where('journal_id', $journal->id)
+            ->whereHas('payment', fn ($query) => $query->where('status', PaymentStatus::Recorded->value))
+            ->exists();
+
+        if ($allocated) {
+            throw new AccountingException('This journal has a supplier payment allocated to it. Void that payment before reversing the journal.');
+        }
+    }
+
     private function reversalDate(Journal $journal): string
     {
         $today = now()->timezone('Asia/Dhaka')->toDateString();
@@ -392,6 +451,10 @@ final class JournalWriter
         ?int $sourceId,
         ?int $reversesJournalId,
     ): Journal {
+        if ($posted) {
+            $this->guardClosed($prepared['date']);
+        }
+
         $journal = new Journal([
             'number' => $number,
             'status' => $status,

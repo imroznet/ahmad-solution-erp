@@ -31,8 +31,10 @@ final class AccountingInstaller
         'journals.post',
         'journals.reverse',
         'receipts.create',
+        'payments.create',
         'reports.view',
         'opening_balances.manage',
+        'periods.manage',
     ];
 
     public function install(): void

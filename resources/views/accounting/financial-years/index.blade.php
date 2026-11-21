@@ -29,7 +29,18 @@
     <div class="mt-6 space-y-3">
         @forelse ($years as $year)
             <div class="rounded border border-line bg-white p-3">
-                @if ($canManage)
+                @if ($year->isClosed())
+                    <p class="text-sm">{{ $year->startsOn() }} to {{ $year->endsOn() }}</p>
+                    <p class="mt-2 text-sm text-muted">Closed {{ $year->closed_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i') }}. {{ $year->close_reason }}</p>
+                    @if ($canReopen)
+                        <form method="POST" action="{{ route('financial-years.reopen', $year) }}" class="mt-3 max-w-xl space-y-3">
+                            @csrf
+                            <label for="reopen-{{ $year->id }}" class="block text-sm font-medium">Reopen reason</label>
+                            <textarea id="reopen-{{ $year->id }}" name="reopen_reason" required minlength="3" maxlength="1000" rows="2" class="w-full rounded border border-line px-3 py-2 text-sm"></textarea>
+                            <button type="submit" class="rounded border border-line px-3 py-2 text-sm">Reopen year</button>
+                        </form>
+                    @endif
+                @elseif ($canManage)
                     <form method="POST" action="{{ route('financial-years.update', $year) }}" class="grid gap-3 sm:grid-cols-3">
                         @csrf
                         @method('PUT')
@@ -50,6 +61,14 @@
                         @method('DELETE')
                         <button type="submit" class="text-sm text-muted">Delete</button>
                     </form>
+                    @if ($canClose && ($today < $year->startsOn() || $today > $year->endsOn()))
+                        <form method="POST" action="{{ route('financial-years.close', $year) }}" class="mt-3 max-w-xl space-y-3">
+                            @csrf
+                            <label for="close-{{ $year->id }}" class="block text-sm font-medium">Close reason</label>
+                            <textarea id="close-{{ $year->id }}" name="close_reason" required minlength="3" maxlength="1000" rows="2" class="w-full rounded border border-line px-3 py-2 text-sm"></textarea>
+                            <button type="submit" class="rounded border border-line px-3 py-2 text-sm">Close year</button>
+                        </form>
+                    @endif
                 @else
                     <p class="text-sm">{{ $year->startsOn() }} to {{ $year->endsOn() }}</p>
                 @endif

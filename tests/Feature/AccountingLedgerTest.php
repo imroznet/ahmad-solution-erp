@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Accounting\AccountChart;
 use App\Accounting\AccountingException;
 use App\Accounting\AccountingInstaller;
+use App\Accounting\AccountType;
 use App\Accounting\JournalBalance;
 use App\Accounting\JournalWriter;
 use App\Accounting\Ledger;
@@ -48,7 +50,8 @@ class AccountingLedgerTest extends TestCase
 
     public function test_the_chart_seeds_cash_and_no_bank_or_mfs_account(): void
     {
-        $this->assertSame(7, Account::query()->count());
+        $this->assertSame(8, Account::query()->count());
+        $this->assertNotNull(Account::query()->where('system_key', 'retained_earnings')->where('code', '3000')->where('name', 'Retained Earnings')->first());
         $this->assertSame(0, BankAccount::query()->count());
         $this->assertSame(0, MfsAccount::query()->count());
         $this->assertNotNull(Account::query()->where('system_key', 'cash')->where('name', 'Cash in Hand')->first());
@@ -60,9 +63,58 @@ class AccountingLedgerTest extends TestCase
 
         $ids = array_column(PermissionCatalog::permissions(), 'id');
         $this->assertContains(82, $ids);
-        $this->assertNotContains(83, $ids);
-        $this->assertNotContains(86, $ids);
+        $this->assertContains(83, $ids);
+        $this->assertContains(86, $ids);
         $this->assertNotContains('receipts.view', array_column(PermissionCatalog::permissions(), 'slug'));
+        $this->assertNotContains('payments.view', array_column(PermissionCatalog::permissions(), 'slug'));
+    }
+
+    public function test_install_claims_an_equity_account_that_already_uses_code_3000(): void
+    {
+        DB::table('chart_of_accounts')->where('system_key', 'retained_earnings')->delete();
+        Account::query()->create([
+            'code' => '3000',
+            'name' => 'Owner equity',
+            'type' => AccountType::Equity,
+            'is_active' => false,
+        ]);
+
+        app(AccountChart::class)->install();
+
+        $rows = Account::query()->where('code', '3000')->get();
+        $this->assertCount(1, $rows);
+        $claimed = $rows->first();
+        $this->assertNotNull($claimed);
+        $this->assertSame('retained_earnings', $claimed->system_key);
+        $this->assertSame('Owner equity', $claimed->name);
+        $this->assertTrue($claimed->is_active);
+        $this->assertSame(1, Account::query()->where('system_key', 'retained_earnings')->count());
+    }
+
+    public function test_install_uses_the_next_code_when_3000_is_not_an_equity_account(): void
+    {
+        DB::table('chart_of_accounts')->where('system_key', 'retained_earnings')->delete();
+        Account::query()->create([
+            'code' => '3000',
+            'name' => 'Misplaced cash',
+            'type' => AccountType::Asset,
+            'is_active' => true,
+        ]);
+        Account::query()->create([
+            'code' => '3001',
+            'name' => 'Share capital',
+            'type' => AccountType::Equity,
+            'is_active' => true,
+        ]);
+
+        app(AccountChart::class)->install();
+
+        $retained = Account::query()->where('system_key', 'retained_earnings')->firstOrFail();
+        $occupant = Account::query()->where('code', '3000')->firstOrFail();
+        $this->assertSame('3002', $retained->code);
+        $this->assertSame('Retained Earnings', $retained->name);
+        $this->assertSame('Misplaced cash', $occupant->name);
+        $this->assertNull($occupant->system_key);
     }
 
     public function test_an_unbalanced_journal_cannot_post_and_a_posted_journal_cannot_change(): void
@@ -557,13 +609,19 @@ class AccountingLedgerTest extends TestCase
         $this->assertContains('dashboard.view', $slugs);
         $this->assertContains('journals.post', $slugs);
         $this->assertContains('receipts.create', $slugs);
+        $this->assertContains('payments.create', $slugs);
+        $this->assertContains('periods.manage', $slugs);
         $this->assertContains('chart_of_accounts.manage', $slugs);
         $this->assertTrue($accountant->fresh()->permissions()->where('slug', 'journals.post')->exists());
         $this->assertTrue($accountant->fresh()->permissions()->where('slug', 'opening_balances.manage')->exists());
+        $this->assertTrue($accountant->fresh()->permissions()->where('slug', 'payments.create')->exists());
+        $this->assertTrue($accountant->fresh()->permissions()->where('slug', 'periods.manage')->exists());
 
         $manager = Role::query()->where('slug', 'accounts-manager')->firstOrFail();
         $this->assertFalse($manager->permissions()->where('slug', 'journals.post')->exists());
         $this->assertFalse($manager->permissions()->where('slug', 'receipts.create')->exists());
+        $this->assertFalse($manager->permissions()->where('slug', 'payments.create')->exists());
+        $this->assertFalse($manager->permissions()->where('slug', 'periods.manage')->exists());
         $this->actingAs($this->userWithRole('accounts-manager'))
             ->get(route('journals.index'))
             ->assertForbidden();

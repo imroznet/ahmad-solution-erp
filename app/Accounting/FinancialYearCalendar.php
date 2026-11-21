@@ -56,6 +56,10 @@ final class FinancialYearCalendar
 
     public function update(FinancialYear $year, string $starts, string $ends): FinancialYear
     {
+        if ($year->isClosed()) {
+            throw new AccountingException('A closed financial year cannot be edited. Reopen it first.');
+        }
+
         $starts = $this->day($starts);
         $ends = $this->day($ends);
         $previousStart = $year->startsOn();

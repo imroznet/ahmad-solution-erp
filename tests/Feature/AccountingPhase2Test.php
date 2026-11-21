@@ -256,7 +256,7 @@ class AccountingPhase2Test extends TestCase
         $this->actingAs($this->accountant)->post(route('mushak.issue', $mushak))->assertRedirect()->assertSessionHasNoErrors();
 
         $equity = Account::query()->create([
-            'code' => '3000',
+            'code' => '3100',
             'name' => 'Owner equity',
             'type' => AccountType::Equity,
             'is_active' => true,
@@ -327,7 +327,7 @@ class AccountingPhase2Test extends TestCase
     {
         $other = $this->party('Meghna Traders');
         $equity = Account::query()->create([
-            'code' => '3000',
+            'code' => '3100',
             'name' => 'Owner equity',
             'type' => AccountType::Equity,
             'is_active' => true,

@@ -100,6 +100,10 @@ If the contact-form switches are not in the database yet, import `deploy/upgrade
 
 If the ledger tables are not in the database yet, import `deploy/upgrade-accounting-phase-1.sql` once. It creates the chart, financial-year, journal, bank, and MFS tables when they are missing, inserts the seven system accounts when each key is missing, and grants the phase 1 accounting permissions to the administrator, the super administrator, and the existing accountant. It does not grant them to the accounts manager. When the company profile has no incorporation date, the import sets 15 May 2025 and leaves a date that is already stored. Importing it again does not rename a system account, does not insert a bank or MFS row, and does not insert a financial year. Cash in Hand is the only cash account in that file.
 
+If the ledger is already imported and receipts are not, import `deploy/upgrade-accounting-phase-2.sql` once after the phase 1 file. It creates the receipt tables when they are missing and grants `receipts.create` to the administrator, the super administrator, and the existing accountant. Importing it again does not duplicate those rows.
+
+If receipts are already imported, import `deploy/upgrade-accounting-phase-3.sql` once after the phase 2 file. It adds the cash-flow classification on receipts, the close columns on financial years, the supplier payment tables, and Retained Earnings when that system account is missing. It grants `payments.create` and `periods.manage` to the administrator, the super administrator, and the existing accountant. It does not grant them to the accounts manager. Importing it again does not add a second column, does not change a stored classification, and does not reopen a closed year.
+
 `artisan migrate --force` on an older database does the same work. The permission migration adds the new grants and does not take older permissions away from a customized role. The unit seeder fills the starter list only when the table is empty, so a later seed does not restore a symbol the owner deleted.
 
 ### First administrator

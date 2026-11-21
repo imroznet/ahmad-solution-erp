@@ -89,6 +89,7 @@
                     @endif
                     @if ($currentUser?->hasPermission('accounting.view'))
                         <x-nav-link :href="route('receipts.index')" :active="request()->routeIs('receipts.*')" icon="receipt" label="Receipts" />
+                        <x-nav-link :href="route('payments.index')" :active="request()->routeIs('payments.*')" icon="receipt" label="Payments" />
                     @endif
                     @if ($currentUser?->hasPermission('opening_balances.manage'))
                         <x-nav-link :href="route('opening-balances.edit')" :active="request()->routeIs('opening-balances.*')" icon="receipt" label="Opening balances" />
@@ -97,6 +98,10 @@
                         <x-nav-link :href="route('reports.trial-balance')" :active="request()->routeIs('reports.trial-balance')" icon="activity" label="Trial balance" />
                         <x-nav-link :href="route('reports.general-ledger')" :active="request()->routeIs('reports.general-ledger')" icon="activity" label="General ledger" />
                         <x-nav-link :href="route('reports.receivables-aging')" :active="request()->routeIs('reports.receivables-aging')" icon="activity" label="Receivables aging" />
+                        <x-nav-link :href="route('reports.payables-aging')" :active="request()->routeIs('reports.payables-aging')" icon="activity" label="Payables aging" />
+                        <x-nav-link :href="route('reports.profit-and-loss')" :active="request()->routeIs('reports.profit-and-loss')" icon="activity" label="Profit and loss" />
+                        <x-nav-link :href="route('reports.balance-sheet')" :active="request()->routeIs('reports.balance-sheet')" icon="activity" label="Balance sheet" />
+                        <x-nav-link :href="route('reports.cash-flow')" :active="request()->routeIs('reports.cash-flow')" icon="activity" label="Cash flow" />
                     @endif
                 @endif
 

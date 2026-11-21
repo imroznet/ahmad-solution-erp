@@ -9,6 +9,7 @@ use App\Models\CommercialInvoice;
 use App\Models\CompanyAddress;
 use App\Models\CompanyProfile;
 use App\Models\DeliveryChallan;
+use App\Models\FinancialYear;
 use App\Models\MushakInvoice;
 use App\Models\Party;
 use App\Models\Permission;
@@ -36,6 +37,10 @@ class TaxModuleTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00', 'Asia/Dhaka'));
+        FinancialYear::query()->create([
+            'starts_on' => '2026-07-01',
+            'ends_on' => '2027-06-30',
+        ]);
     }
 
     protected function tearDown(): void

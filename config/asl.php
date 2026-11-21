@@ -74,6 +74,14 @@ return [
     ],
 
     /*
+    | Customer receipts. The number is RCPT-{Asia/Dhaka year}-{sequence}.
+    | A recorded receipt is not edited. The correction is a void.
+    */
+    'receipts' => [
+        'number_prefix' => 'RCPT',
+    ],
+
+    /*
     | The public site (ahmad.com.bd) is a separate application with its own
     | database. It reads this flag file. Set the same absolute path on both
     | applications. An empty value keeps the flag inside this application's

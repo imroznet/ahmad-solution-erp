@@ -87,6 +87,7 @@ INSERT INTO `permissions` (`id`, `name`, `slug`, `permission_group`, `descriptio
 (79, 'Create journals', 'journals.create', 'Accounting', 'Create, edit, and delete a draft journal.', NOW(), NOW()),
 (80, 'Post journals', 'journals.post', 'Accounting', 'Post a balanced draft. Posting does not change a posted journal.', NOW(), NOW()),
 (81, 'Reverse journals', 'journals.reverse', 'Accounting', 'Add a journal that negates a posted journal.', NOW(), NOW()),
+(82, 'Record customer receipts', 'receipts.create', 'Accounting', 'Record and void a customer receipt. The receipt posts immediately. A recorded receipt is not edited.', NOW(), NOW()),
 (84, 'View accounting reports', 'reports.view', 'Accounting', 'View the trial balance and the general ledger.', NOW(), NOW()),
 (85, 'Manage opening balances', 'opening_balances.manage', 'Accounting', 'Enter opening balances and an opening date. Each account is opened once. A bank or MFS line cannot be dated before that account was opened.', NOW(), NOW());
 
@@ -182,6 +183,7 @@ INSERT INTO `permission_role` (`role_id`, `permission_id`) VALUES
 (1, 79),
 (1, 80),
 (1, 81),
+(1, 82),
 (1, 84),
 (1, 85),
 (2, 1),
@@ -263,6 +265,7 @@ INSERT INTO `permission_role` (`role_id`, `permission_id`) VALUES
 (2, 79),
 (2, 80),
 (2, 81),
+(2, 82),
 (2, 84),
 (2, 85),
 (3, 1),
@@ -359,6 +362,7 @@ INSERT INTO `permission_role` (`role_id`, `permission_id`) VALUES
 (4, 79),
 (4, 80),
 (4, 81),
+(4, 82),
 (4, 84),
 (4, 85),
 (5, 1),

@@ -197,6 +197,48 @@ final class JournalWriter
     }
 
     /**
+     * Posts a document journal inside the caller's transaction.
+     *
+     * @param  array{journal_date: string, memo?: string|null, lines: list<mixed>}  $input
+     */
+    public function postDocument(array $input, JournalSource $source, string $sourceType, int $sourceId, User $actor): Journal
+    {
+        $write = function () use ($input, $source, $sourceType, $sourceId, $actor): Journal {
+            $prepared = $this->prepare($input, true);
+            $journal = $this->store(
+                $this->numbers->allocate(),
+                JournalStatus::Posted,
+                $source,
+                $prepared,
+                $actor,
+                true,
+                $sourceType,
+                $sourceId,
+                null,
+            );
+            $this->audit->record('journal_created', $journal, newValues: $this->snapshot($journal), actor: $actor);
+            $this->audit->record('journal_posted', $journal, newValues: $this->snapshot($journal), actor: $actor);
+
+            return $journal;
+        };
+
+        return $this->within($write);
+    }
+
+    public function findPostedFor(JournalSource $source, string $sourceType, int $sourceId): ?Journal
+    {
+        $journal = Journal::query()
+            ->where('source', $source->value)
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->where('status', JournalStatus::Posted->value)
+            ->orderBy('id')
+            ->first();
+
+        return $journal instanceof Journal ? $journal : null;
+    }
+
+    /**
      * @template T
      *
      * @param  Closure(): T  $callback

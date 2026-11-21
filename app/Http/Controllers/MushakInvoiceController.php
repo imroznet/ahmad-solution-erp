@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\AccountingException;
 use App\Documents\DocumentStatus;
 use App\Models\CommercialInvoice;
 use App\Models\MushakInvoice;
@@ -218,6 +219,10 @@ class MushakInvoiceController extends Controller
         } catch (TaxRuleException $exception) {
             throw ValidationException::withMessages([
                 $exception->field => $exception->getMessage(),
+            ]);
+        } catch (AccountingException $exception) {
+            throw ValidationException::withMessages([
+                'mushak' => $exception->getMessage(),
             ]);
         }
     }

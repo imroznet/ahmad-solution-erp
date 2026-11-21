@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Accounting\FinancialYearCalendar;
 use App\Documents\ChallanWorkflow;
 use App\Documents\ChallanWriter;
 use App\Documents\DocumentBalance;
@@ -65,6 +66,12 @@ function quantityLockParent(): void
         fwrite(STDERR, Artisan::output());
         exit(1);
     }
+
+    $today = now()->timezone('Asia/Dhaka');
+    app(FinancialYearCalendar::class)->create(
+        $today->copy()->startOfYear()->toDateString(),
+        $today->copy()->endOfYear()->toDateString(),
+    );
 
     $sales = User::query()->create([
         'name' => 'Quantity sales',

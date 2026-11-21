@@ -59,7 +59,7 @@ class AccountingLedgerTest extends TestCase
         );
 
         $ids = array_column(PermissionCatalog::permissions(), 'id');
-        $this->assertNotContains(82, $ids);
+        $this->assertContains(82, $ids);
         $this->assertNotContains(83, $ids);
         $this->assertNotContains(86, $ids);
         $this->assertNotContains('receipts.view', array_column(PermissionCatalog::permissions(), 'slug'));
@@ -556,12 +556,14 @@ class AccountingLedgerTest extends TestCase
         $slugs = $administrator->fresh()->permissions()->pluck('slug')->all();
         $this->assertContains('dashboard.view', $slugs);
         $this->assertContains('journals.post', $slugs);
+        $this->assertContains('receipts.create', $slugs);
         $this->assertContains('chart_of_accounts.manage', $slugs);
         $this->assertTrue($accountant->fresh()->permissions()->where('slug', 'journals.post')->exists());
         $this->assertTrue($accountant->fresh()->permissions()->where('slug', 'opening_balances.manage')->exists());
 
         $manager = Role::query()->where('slug', 'accounts-manager')->firstOrFail();
         $this->assertFalse($manager->permissions()->where('slug', 'journals.post')->exists());
+        $this->assertFalse($manager->permissions()->where('slug', 'receipts.create')->exists());
         $this->actingAs($this->userWithRole('accounts-manager'))
             ->get(route('journals.index'))
             ->assertForbidden();

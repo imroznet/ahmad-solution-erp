@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CommercialInvoice;
 use App\Models\DeliveryChallan;
 use App\Models\DeliveryChallanLine;
+use App\Models\FinancialYear;
 use App\Models\MushakInvoice;
 use App\Models\MushakInvoiceLine;
 use App\Models\Party;
@@ -26,6 +27,10 @@ class UnitListTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00', 'Asia/Dhaka'));
+        FinancialYear::query()->create([
+            'starts_on' => '2026-07-01',
+            'ends_on' => '2027-06-30',
+        ]);
         $this->seed(UnitSeeder::class);
     }
 

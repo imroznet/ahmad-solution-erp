@@ -30,6 +30,7 @@ final class AccountingInstaller
         'journals.create',
         'journals.post',
         'journals.reverse',
+        'receipts.create',
         'reports.view',
         'opening_balances.manage',
     ];

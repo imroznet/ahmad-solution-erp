@@ -198,7 +198,7 @@ jobs:
           mfs_rows=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM mfs_accounts" asl_erp)
           test "$mfs_rows" = "0"
           accounting_permissions=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE permission_group='Accounting'" asl_erp)
-          test "$accounting_permissions" = "9"
+          test "$accounting_permissions" = "10"
           manager_journals=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accounts-manager' AND p.slug='journals.post'" asl_erp)
           test "$manager_journals" = "0"
           accountant_journals=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accountant' AND p.slug='journals.post'" asl_erp)
@@ -209,6 +209,20 @@ jobs:
           test "$admin_opening" = "1"
           accounting_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_21_100001_create_accounting_ledger'" asl_erp)
           test "$accounting_migration" = "1"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-accounting-phase-2.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_erp < deploy/upgrade-accounting-phase-2.sql
+          receipt_permission=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE id=82 AND slug='receipts.create'" asl_erp)
+          test "$receipt_permission" = "1"
+          receipt_view=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug IN ('receipts.view', 'payments.create', 'periods.manage')" asl_erp)
+          test "$receipt_view" = "0"
+          accountant_receipts=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accountant' AND p.slug='receipts.create'" asl_erp)
+          test "$accountant_receipts" = "1"
+          manager_receipts=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accounts-manager' AND p.slug='receipts.create'" asl_erp)
+          test "$manager_receipts" = "0"
+          receipt_tables=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='asl_erp' AND TABLE_NAME IN ('receipts', 'receipt_allocations', 'receipt_number_sequences')")
+          test "$receipt_tables" = "3"
+          receipt_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_21_140001_create_accounting_receipts'" asl_erp)
+          test "$receipt_migration" = "1"
           mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_upgrade CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_upgrade.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           for path in database/migrations/*.php; do
             case "$(basename "$path")" in
@@ -278,6 +292,20 @@ jobs:
           test "$upgraded_sales_void" = "0"
           upgraded_document_manager=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='document-manager' AND p.permission_group IN ('Challans', 'Invoices')" asl_upgrade)
           test "$upgraded_document_manager" = "0"
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-accounting-phase-2.sql
+          mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade < deploy/upgrade-accounting-phase-2.sql
+          upgrade_receipt_permission=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE id=82 AND slug='receipts.create'" asl_upgrade)
+          test "$upgrade_receipt_permission" = "1"
+          upgrade_receipt_view=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permissions WHERE slug IN ('receipts.view', 'payments.create', 'periods.manage')" asl_upgrade)
+          test "$upgrade_receipt_view" = "0"
+          upgrade_accountant_receipts=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accountant' AND p.slug='receipts.create'" asl_upgrade)
+          test "$upgrade_accountant_receipts" = "1"
+          upgrade_manager_receipts=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM permission_role pr JOIN roles r ON r.id = pr.role_id JOIN permissions p ON p.id = pr.permission_id WHERE r.slug='accounts-manager' AND p.slug='receipts.create'" asl_upgrade)
+          test "$upgrade_manager_receipts" = "0"
+          upgrade_receipt_tables=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='asl_upgrade' AND TABLE_NAME IN ('receipts', 'receipt_allocations', 'receipt_number_sequences')")
+          test "$upgrade_receipt_tables" = "3"
+          upgrade_receipt_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_21_140001_create_accounting_receipts'" asl_upgrade)
+          test "$upgrade_receipt_migration" = "1"
           mysql --defaults-extra-file=/tmp/mysql-client.cnf asl_upgrade <<'SQL'
           DELETE FROM permission_role WHERE permission_id IN (SELECT id FROM (SELECT id FROM permissions WHERE permission_group IN ('Tax rules', 'Mushak', 'VDS', 'AIT')) AS tax_permissions);
           DELETE FROM permissions WHERE permission_group IN ('Tax rules', 'Mushak', 'VDS', 'AIT');
@@ -324,12 +352,13 @@ jobs:
           test "$history_custom" = "1"
           history_migration=$(mysql --defaults-extra-file=/tmp/mysql-client.cnf -N -e "SELECT COUNT(*) FROM migrations WHERE migration='2026_11_07_100003_preserve_delivery_document_line_history'" asl_line_history)
           test "$history_migration" = "1"
-          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_quantity_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_quantity_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
+          mysql -h 127.0.0.1 -P 3306 -uroot -prootsecret -e "CREATE DATABASE IF NOT EXISTS asl_quotation_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_quotation_totals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_year CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_document_quantity_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE IF NOT EXISTS asl_receipt_lock CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON asl_quotation_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_quotation_totals.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_year.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_document_quantity_lock.* TO 'asl'@'%'; GRANT ALL PRIVILEGES ON asl_receipt_lock.* TO 'asl'@'%'; FLUSH PRIVILEGES;"
           DB_DATABASE=asl_quotation_lock php scripts/check-quotation-number-lock.php
           DB_DATABASE=asl_quotation_year php scripts/check-quotation-new-year-lock.php
           DB_DATABASE=asl_quotation_totals php scripts/check-quotation-total-bounds.php
           DB_DATABASE=asl_document_year php scripts/check-document-new-year-lock.php
           DB_DATABASE=asl_document_quantity_lock php scripts/check-document-quantity-lock.php
+          DB_DATABASE=asl_receipt_lock php scripts/check-receipt-allocation-lock.php
           rm -f /tmp/mysql-client.cnf
 
       - name: Install production dependencies

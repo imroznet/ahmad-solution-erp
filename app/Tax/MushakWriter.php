@@ -2,6 +2,7 @@
 
 namespace App\Tax;
 
+use App\Accounting\DocumentPosting;
 use App\Documents\CompanySnapshot;
 use App\Documents\DocumentStatus;
 use App\Models\CommercialInvoice;
@@ -33,6 +34,7 @@ final class MushakWriter
         private readonly MushakNumberAllocator $numbers,
         private readonly PartyAuthorizer $parties,
         private readonly AuditLogger $audit,
+        private readonly DocumentPosting $posting,
     ) {}
 
     public function start(User $actor, CommercialInvoice $invoice): MushakInvoice
@@ -194,6 +196,7 @@ final class MushakWriter
             $locked->save();
             $this->event($locked, MushakInvoiceEvent::ISSUED, $actor, null);
             $this->audit->record('mushak_issued', $locked, newValues: $this->payload($locked), actor: $actor);
+            $this->posting->postMushak($locked, $actor);
 
             return $locked->refresh();
         });
@@ -225,6 +228,7 @@ final class MushakWriter
             $locked->save();
             $this->event($locked, MushakInvoiceEvent::VOIDED, $actor, $reason);
             $this->audit->record('mushak_voided', $locked, newValues: $this->payload($locked), actor: $actor);
+            $this->posting->reverseMushak($locked, $actor);
 
             return $locked->refresh();
         });

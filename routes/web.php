@@ -30,6 +30,7 @@ use App\Http\Controllers\QuotationApprovalController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\QuotationShareController;
 use App\Http\Controllers\QuotationWorkflowController;
+use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SystemStatusController;
 use App\Http\Controllers\TaxRuleController;
@@ -210,12 +211,31 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('permission:journals.reverse')
         ->name('journals.reverse');
 
+    Route::get('/accounting/receipts', [ReceiptController::class, 'index'])
+        ->middleware('permission:accounting.view')
+        ->name('receipts.index');
+    Route::get('/accounting/receipts/create', [ReceiptController::class, 'create'])
+        ->middleware('permission:receipts.create')
+        ->name('receipts.create');
+    Route::post('/accounting/receipts', [ReceiptController::class, 'store'])
+        ->middleware('permission:receipts.create')
+        ->name('receipts.store');
+    Route::get('/accounting/receipts/{receipt}', [ReceiptController::class, 'show'])
+        ->middleware('permission:accounting.view')
+        ->name('receipts.show');
+    Route::post('/accounting/receipts/{receipt}/void', [ReceiptController::class, 'void'])
+        ->middleware('permission:receipts.create')
+        ->name('receipts.void');
+
     Route::get('/accounting/trial-balance', [AccountingReportController::class, 'trialBalance'])
         ->middleware('permission:reports.view')
         ->name('reports.trial-balance');
     Route::get('/accounting/general-ledger', [AccountingReportController::class, 'generalLedger'])
         ->middleware('permission:reports.view')
         ->name('reports.general-ledger');
+    Route::get('/accounting/receivables-aging', [AccountingReportController::class, 'receivablesAging'])
+        ->middleware('permission:reports.view')
+        ->name('reports.receivables-aging');
 
     Route::get('/company', [CompanyProfileController::class, 'show'])
         ->middleware('permission:company.view')

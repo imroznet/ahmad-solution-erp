@@ -87,12 +87,16 @@
                     @if ($currentUser?->hasPermission('journals.view'))
                         <x-nav-link :href="route('journals.index')" :active="request()->routeIs('journals.*')" icon="file" label="Journals" />
                     @endif
+                    @if ($currentUser?->hasPermission('accounting.view'))
+                        <x-nav-link :href="route('receipts.index')" :active="request()->routeIs('receipts.*')" icon="receipt" label="Receipts" />
+                    @endif
                     @if ($currentUser?->hasPermission('opening_balances.manage'))
                         <x-nav-link :href="route('opening-balances.edit')" :active="request()->routeIs('opening-balances.*')" icon="receipt" label="Opening balances" />
                     @endif
                     @if ($currentUser?->hasPermission('reports.view'))
                         <x-nav-link :href="route('reports.trial-balance')" :active="request()->routeIs('reports.trial-balance')" icon="activity" label="Trial balance" />
                         <x-nav-link :href="route('reports.general-ledger')" :active="request()->routeIs('reports.general-ledger')" icon="activity" label="General ledger" />
+                        <x-nav-link :href="route('reports.receivables-aging')" :active="request()->routeIs('reports.receivables-aging')" icon="activity" label="Receivables aging" />
                     @endif
                 @endif
 

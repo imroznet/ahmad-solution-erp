@@ -49,7 +49,7 @@ There is no `company_settings` table. The single profile holds the currency, fin
 
 ## Party design
 
-The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. VDS, AIT, and journal lines are separate tables. Receipts, payments, and a receivables subledger are not in this schema. Opening balances are journals, not a balance column.
+The earlier plan used separate customer and supplier tables. That was changed. Tax and document obligations differ by the document, not by cloning the organisation. `parties.id` is the stable key for a quotation. A delivery challan and a commercial invoice point at that quotation and copy its customer text. VDS, AIT, and journal lines are separate tables. Customer receipts and allocations are tables. Supplier payments are not. Receivables aging is derived from posted journals and allocations. Opening balances are journals, not a balance column.
 
 Archived parties and closed addresses are not soft-deleted. A soft delete would hide them from status filters and from a normal foreign key. There is no delete action. Division, district, and upazila are indexed text fields so a locality can be entered without a gazetteer table.
 

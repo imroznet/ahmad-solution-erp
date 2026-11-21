@@ -2,9 +2,12 @@
 
 namespace App\Documents;
 
+use App\Accounting\DocumentPosting;
+use App\Accounting\ReceiptStatus;
 use App\Models\CommercialInvoice;
 use App\Models\CommercialInvoiceEvent;
 use App\Models\MushakInvoice;
+use App\Models\ReceiptAllocation;
 use App\Models\User;
 use App\Services\AuditLogger;
 
@@ -18,6 +21,7 @@ final class InvoiceWorkflow
         private readonly DocumentText $text,
         private readonly DocumentTransaction $transactions,
         private readonly AuditLogger $audit,
+        private readonly DocumentPosting $posting,
     ) {}
 
     public function issue(CommercialInvoice $invoice, User $actor): CommercialInvoice
@@ -53,6 +57,7 @@ final class InvoiceWorkflow
                 'created_at' => now(),
             ]);
             $this->audit->record('commercial_invoice_issued', $invoice, newValues: $this->payload($invoice), actor: $actor);
+            $this->posting->postInvoice($invoice, $actor);
 
             return $invoice;
         }, 'commercial_invoices');
@@ -88,6 +93,18 @@ final class InvoiceWorkflow
                 }
             }
 
+            $allocated = ReceiptAllocation::query()
+                ->where('commercial_invoice_id', (int) $invoice->getKey())
+                ->whereHas('receipt', fn ($query) => $query->where('status', ReceiptStatus::Recorded->value))
+                ->exists();
+
+            if ($allocated) {
+                throw new DocumentRuleException(
+                    'commercial_invoice_id',
+                    'A customer receipt is allocated to this invoice. Void that receipt before voiding the invoice.'
+                );
+            }
+
             $voidReason = $this->text->required($reason, 'void_reason', 1000);
             $invoice->fill([
                 'status' => DocumentStatus::VOIDED,
@@ -105,6 +122,7 @@ final class InvoiceWorkflow
                 ...$this->payload($invoice),
                 'void_reason' => $voidReason,
             ], actor: $actor);
+            $this->posting->reverseInvoice($invoice, $actor);
         }, 'commercial_invoices');
     }
 

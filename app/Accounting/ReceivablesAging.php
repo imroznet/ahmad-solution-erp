@@ -8,6 +8,7 @@ use App\Models\Journal;
 use App\Models\JournalLine;
 use App\Models\Party;
 use App\Models\Receipt;
+use App\Support\Decimal;
 use App\Support\Money;
 use Illuminate\Support\Carbon;
 
@@ -29,10 +30,11 @@ final class ReceivablesAging
     public function build(): array
     {
         $today = now()->timezone('Asia/Dhaka')->startOfDay();
+        $asOf = $today->toDateString();
         /** @var array<int, list<array{label: string, date: string, invoiced: string, allocated: string, outstanding: string, bucket: string}>> $lines */
         $lines = [];
 
-        foreach ($this->invoices() as $invoice) {
+        foreach ($this->invoices($asOf) as $invoice) {
             $partyId = $invoice->quotation?->party_id;
 
             if (! is_numeric($partyId)) {
@@ -42,7 +44,7 @@ final class ReceivablesAging
             $date = $invoice->getAttribute('invoice_date');
             $day = $date instanceof Carbon ? $date->toDateString() : '';
             $invoiced = $this->balances->invoiced($invoice);
-            $allocated = $this->balances->allocated($invoice);
+            $allocated = $this->balances->allocated($invoice, false, $asOf);
             $lines[(int) $partyId][] = $this->line(
                 $invoice->displayNumber(),
                 $day,
@@ -53,7 +55,7 @@ final class ReceivablesAging
             );
         }
 
-        foreach ($this->openings() as $opening) {
+        foreach ($this->openings($asOf) as $opening) {
             $lines[$opening['party_id']][] = $this->line(
                 'Opening balance',
                 $opening['date'],
@@ -64,9 +66,32 @@ final class ReceivablesAging
             );
         }
 
-        $advances = $this->advances();
-        $receivables = $this->receivables();
-        $partyIds = array_values(array_unique(array_merge(array_keys($lines), array_keys($advances))));
+        foreach ($this->adjustments($asOf) as $adjustment) {
+            $lines[$adjustment['party_id']][] = $this->line(
+                $adjustment['label'],
+                $adjustment['date'],
+                $adjustment['amount'],
+                Money::zero(),
+                $adjustment['amount'],
+                $today,
+            );
+        }
+
+        $advances = $this->advances($asOf);
+        $receivables = $this->receivables($asOf);
+        $partyIds = array_keys($lines);
+
+        foreach (array_keys($advances) as $partyId) {
+            $partyIds[] = $partyId;
+        }
+
+        foreach ($receivables as $partyId => $amount) {
+            if (! Decimal::of($amount)->isZero()) {
+                $partyIds[] = $partyId;
+            }
+        }
+
+        $partyIds = array_values(array_unique($partyIds));
         $rows = [];
         $grand = Money::zero();
 
@@ -117,10 +142,11 @@ final class ReceivablesAging
     /**
      * @return list<CommercialInvoice>
      */
-    private function invoices(): array
+    private function invoices(string $asOf): array
     {
         return CommercialInvoice::query()
             ->where('status', DocumentStatus::ISSUED)
+            ->whereDate('invoice_date', '<=', $asOf)
             ->with('quotation')
             ->orderBy('invoice_date')
             ->orderBy('id')
@@ -131,7 +157,7 @@ final class ReceivablesAging
     /**
      * @return list<array{party_id: int, date: string, amount: Money}>
      */
-    private function openings(): array
+    private function openings(string $asOf): array
     {
         $account = $this->posting->account('accounts_receivable');
         $rows = [];
@@ -141,7 +167,11 @@ final class ReceivablesAging
             ->whereNotNull('party_id')
             ->whereHas('journal', fn ($query) => $query
                 ->where('status', JournalStatus::Posted->value)
-                ->where('source', JournalSource::Opening->value))
+                ->where('source', JournalSource::Opening->value)
+                ->whereDate('journal_date', '<=', $asOf)
+                ->whereDoesntHave('reversal', fn ($reversal) => $reversal
+                    ->where('status', JournalStatus::Posted->value)
+                    ->whereDate('journal_date', '<=', $asOf)))
             ->with('journal')
             ->orderBy('id')
             ->get() as $line) {
@@ -160,19 +190,83 @@ final class ReceivablesAging
     }
 
     /**
+     * @return list<array{party_id: int, label: string, date: string, amount: Money}>
+     */
+    private function adjustments(string $asOf): array
+    {
+        $account = $this->posting->account('accounts_receivable');
+        $rows = [];
+
+        foreach (JournalLine::query()
+            ->where('account_id', $account->id)
+            ->whereNotNull('party_id')
+            ->whereHas('journal', fn ($query) => $query
+                ->where('status', JournalStatus::Posted->value)
+                ->whereDate('journal_date', '<=', $asOf)
+                ->where(function ($query) use ($asOf): void {
+                    $query->where(function ($manual) use ($asOf): void {
+                        $manual->where('source', JournalSource::Manual->value)
+                            ->whereDoesntHave('reversal', fn ($reversal) => $reversal
+                                ->where('status', JournalStatus::Posted->value)
+                                ->whereDate('journal_date', '<=', $asOf));
+                    })->orWhere(function ($reversal) use ($asOf): void {
+                        $reversal->where('source', JournalSource::Reversal->value)
+                            ->whereHas('reverses', fn ($original) => $original
+                                ->where('source', JournalSource::Manual->value)
+                                ->whereDate('journal_date', '>', $asOf));
+                    });
+                }))
+            ->with('journal')
+            ->orderBy('id')
+            ->get() as $line) {
+            if (! is_numeric($line->party_id) || ! $line->journal instanceof Journal) {
+                continue;
+            }
+
+            $amount = Money::of($line->decimalAttribute('debit'))->minus(Money::of($line->decimalAttribute('credit')));
+
+            if (Decimal::of($amount->amount())->isZero()) {
+                continue;
+            }
+
+            $label = $line->journal->source === JournalSource::Reversal ? 'Reversal ' : 'Adjustment ';
+            $rows[] = [
+                'party_id' => (int) $line->party_id,
+                'label' => $label.$line->journal->number,
+                'date' => $line->journal->journalDateString(),
+                'amount' => $amount,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return array<int, string>
      */
-    private function advances(): array
+    private function advances(string $asOf): array
     {
         $amounts = [];
 
-        foreach (Receipt::query()->where('status', ReceiptStatus::Recorded->value)->with('allocations')->orderBy('id')->get() as $receipt) {
+        foreach (Receipt::query()
+            ->where('status', ReceiptStatus::Recorded->value)
+            ->whereDate('receipt_date', '<=', $asOf)
+            ->with('allocations.invoice')
+            ->orderBy('id')
+            ->get() as $receipt) {
             $credit = Money::of($receipt->decimalAttribute('amount_received'))
                 ->plus(Money::of($receipt->decimalAttribute('vds_deducted')))
                 ->plus(Money::of($receipt->decimalAttribute('ait_deducted')));
             $allocated = Money::zero();
 
             foreach ($receipt->allocations as $allocation) {
+                $invoiceDate = $allocation->invoice?->getAttribute('invoice_date');
+                $invoiceDay = $invoiceDate instanceof Carbon ? $invoiceDate->toDateString() : '';
+
+                if ($invoiceDay !== '' && $invoiceDay > $asOf) {
+                    continue;
+                }
+
                 $allocated = $allocated->plus(Money::of($allocation->decimalAttribute('amount')));
             }
 
@@ -186,7 +280,7 @@ final class ReceivablesAging
     /**
      * @return array<int, string>
      */
-    private function receivables(): array
+    private function receivables(string $asOf): array
     {
         $account = $this->posting->account('accounts_receivable');
         $amounts = [];
@@ -194,7 +288,9 @@ final class ReceivablesAging
         foreach (JournalLine::query()
             ->where('account_id', $account->id)
             ->whereNotNull('party_id')
-            ->whereHas('journal', fn ($query) => $query->where('status', JournalStatus::Posted->value))
+            ->whereHas('journal', fn ($query) => $query
+                ->where('status', JournalStatus::Posted->value)
+                ->whereDate('journal_date', '<=', $asOf))
             ->orderBy('id')
             ->get() as $line) {
             if (! is_numeric($line->party_id)) {

@@ -282,6 +282,7 @@ final class ReceiptWriter
             }
 
             $this->lockInvoice($invoiceId);
+            $this->pauseForAllocationRace();
             $invoice = CommercialInvoice::query()->whereKey($invoiceId)->first();
 
             if (! $invoice instanceof CommercialInvoice) {
@@ -307,7 +308,7 @@ final class ReceiptWriter
                 throw new AccountingException('A receipt cannot be allocated to an invoice dated after the receipt.');
             }
 
-            $outstanding = $this->balances->outstanding($invoice);
+            $outstanding = $this->balances->outstanding($invoice, true);
 
             if (Decimal::of($amount->amount())->compare(Decimal::of($outstanding->amount())) > 0) {
                 throw new AccountingException('The allocation is more than the invoice outstanding.');
@@ -322,6 +323,15 @@ final class ReceiptWriter
         }
 
         return $checked;
+    }
+
+    private function pauseForAllocationRace(): void
+    {
+        // The disposable MySQL rehearsal holds the invoice lock so the other
+        // worker is waiting with an older snapshot. Production leaves this unset.
+        if (getenv('ASL_RECEIPT_ALLOCATION_DELAY') === '1') {
+            sleep(1);
+        }
     }
 
     private function lockInvoice(int $invoiceId): void

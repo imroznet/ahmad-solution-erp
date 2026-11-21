@@ -306,6 +306,62 @@ class AccountingPhase2Test extends TestCase
             ->assertSee('385.00');
     }
 
+    public function test_aging_leaves_out_documents_dated_after_today(): void
+    {
+        $current = $this->issuedInvoice($this->customer, '2026-11-21', '1', '100.00');
+        $future = $this->issuedInvoice($this->customer, '2026-11-22', '1', '25.00');
+        $this->recordReceipt($current, '10.00', '10.00', '2026-11-22');
+
+        $report = app(ReceivablesAging::class)->build();
+        $party = $report['parties'][0];
+        $labels = array_column($party['lines'], 'label');
+
+        $this->assertNotContains($future->number, $labels);
+        $this->assertSame('100.00', $party['lines'][0]['outstanding']);
+        $this->assertSame('0.00', $party['advance']);
+        $this->assertSame('100.00', $party['total']);
+        $this->assertSame($party['total'], $party['receivable']);
+    }
+
+    public function test_aging_includes_a_manual_receivable_for_a_customer_with_no_invoice(): void
+    {
+        $other = $this->party('Meghna Traders');
+        $equity = Account::query()->create([
+            'code' => '3000',
+            'name' => 'Owner equity',
+            'type' => AccountType::Equity,
+            'is_active' => true,
+        ]);
+        $writer = app(JournalWriter::class);
+        $journal = $writer->createDraft([
+            'journal_date' => '2026-11-01',
+            'memo' => 'Opening correction',
+            'lines' => [
+                ['account_id' => $this->accountId('accounts_receivable'), 'debit' => '25.00', 'credit' => '', 'party_id' => $other->id, 'memo' => ''],
+                ['account_id' => $equity->id, 'debit' => '', 'credit' => '25.00', 'party_id' => '', 'memo' => ''],
+            ],
+        ], $this->accountant);
+        $writer->post($journal, $this->accountant);
+
+        $report = app(ReceivablesAging::class)->build();
+        $this->assertCount(1, $report['parties']);
+        $party = $report['parties'][0];
+        $this->assertSame($other->id, $party['party_id']);
+        $this->assertSame('Adjustment '.$journal->number, $party['lines'][0]['label']);
+        $this->assertSame('25.00', $party['lines'][0]['outstanding']);
+        $this->assertSame('25.00', $party['total']);
+        $this->assertSame($party['total'], $party['receivable']);
+        $this->assertSame('25.00', $report['total']);
+    }
+
+    public function test_a_second_receipt_cannot_allocate_more_than_the_invoice_has_left(): void
+    {
+        $invoice = $this->issuedInvoice($this->customer, '2026-11-06', '1', '100.00');
+        $this->recordReceipt($invoice, '60.00', '60.00', '2026-11-21');
+        $this->recordReceipt($invoice, '50.00', '50.00', '2026-11-21', false);
+        $this->assertSame(1, Receipt::query()->where('status', 'recorded')->count());
+    }
+
     private function recordReceipt(CommercialInvoice $invoice, string $received, string $allocated, string $date, bool $ok = true): Receipt
     {
         $cash = Account::query()->where('system_key', 'cash')->firstOrFail();

@@ -1,6 +1,6 @@
 <x-layouts.app title="Receivables aging">
     <h1 class="text-xl font-semibold">Receivables aging</h1>
-    <p class="mt-1 max-w-3xl text-sm text-muted">Issued commercial invoices and opening Accounts Receivable, as at {{ $report['as_of'] }} (Asia/Dhaka). Drafts and void invoices are left out. Invoiced amount is the invoice total plus VAT from an issued Mushak 6.3, at two decimal places. Allocations are from receipts that are not void. An unallocated receipt remainder is an advance and reduces the customer total. Amounts are BDT.</p>
+    <p class="mt-1 max-w-3xl text-sm text-muted">Issued commercial invoices, opening Accounts Receivable, and manual receivable adjustments, as at {{ $report['as_of'] }} (Asia/Dhaka). A document or journal dated after that day is left out. Drafts and void invoices are left out. Invoiced amount is the invoice total plus VAT from an issued Mushak 6.3, at two decimal places. Allocations are from receipts that are not void and are dated on or before that day. An unallocated receipt remainder is an advance and reduces the customer total. Amounts are BDT.</p>
     @forelse ($report['parties'] as $party)
         <section class="mt-6">
             <h2 class="text-sm font-medium">{{ $party['name'] }}</h2>
@@ -50,7 +50,7 @@
             </div>
         </section>
     @empty
-        <p class="mt-6 text-sm text-muted">No issued invoices, opening receivables, or customer receipts.</p>
+        <p class="mt-6 text-sm text-muted">No issued invoices, opening receivables, adjustments, or customer receipts as at this date.</p>
     @endforelse
     @if ($report['parties'] !== [])
         <p class="mt-4 text-sm font-medium">All customers {{ \App\Support\Money::of($report['total'])->groupedAmount() }}</p>

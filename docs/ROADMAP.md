@@ -232,7 +232,7 @@ Phase 2 is in this branch:
 - Issuing a Mushak 6.3 posts Accounts Receivable to Output VAT Payable for the stored VAT, rounded half-up to two decimal places. Explicit zero VAT posts nothing. Void reverses that journal when one exists. A delivery challan posts nothing
 - Customer receipts, numbered `RCPT-{Asia/Dhaka year}-{sequence}`. A receipt posts when it is recorded: the settlement account, VDS Receivable, and AIT Receivable, credited to Accounts Receivable. VDS and AIT are typed. They are not calculated, and they are not credited to Output VAT Payable. A recorded receipt is not edited. Void reverses its journal
 - Allocations apply a receipt to issued invoices of the same customer. Partial allocation leaves the remainder as an advance on Accounts Receivable. There is no advance account. An invoice cannot be voided while a live allocation exists
-- Receivables aging from issued invoices, issued Mushak VAT, opening receivable lines, and receipts that are not void
+- Receivables aging as at Asia/Dhaka today, from issued invoices and Mushak VAT, opening receivable lines, manual receivable adjustments, and receipts that are not void. A later date is left out. The customer total matches posted Accounts Receivable as at that day
 - Permission 82, `receipts.create`, for the administrator and the existing accountant. The accounts manager does not receive it. There is no `receipts.view`, `payments.create`, or `periods.manage`
 - Invoices and Mushak forms issued before this phase are not back-posted
 
